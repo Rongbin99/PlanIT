@@ -32,7 +32,7 @@ const NativeMap: React.FC<{
   };
 
 // Main HomeScreen Map component
-export default function HomeScreen() {
+export default function Index() {
     const [latitude, setLatitude] = useState(37.78825);
     const [longitude, setLongitude] = useState(-122.4324);
     const [loading, setLoading] = useState(true);
