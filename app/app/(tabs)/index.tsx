@@ -1,61 +1,74 @@
-import { StyleSheet } from 'react-native';
-import MapView from 'react-native-maps';
-import { useEffect, useState } from 'react';
-import GetLocation from 'react-native-get-location';
-
-import { View } from '@/components/Themed';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import * as Location from 'expo-location';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import type { LatLngExpression } from 'leaflet';
 
 export default function HomeScreen() {
-  const [latitude, setLatitude] = useState(37.78825);
-  const [longitude, setLongitude] = useState(-122.4324);
-  const [loading, setLoading] = useState(true);
+    const [position, setPosition] = useState<LatLngExpression>([
+        37.78825,
+        -122.4324,
+      ]);
+      const [loading, setLoading] = useState(true);
+      const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    GetLocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 60000,
-    })
-    .then(location => {
-      setLatitude(location.latitude);
-      setLongitude(location.longitude);
-      console.log(`Latitude: ${location.latitude}, Longitude: ${location.longitude}`);
-      setLoading(false);
-    })
-    .catch(error => {
-      const { code, message } = error;
-      console.warn(code, message);
-      setLoading(false);
-    });
-  }, []);
+    useEffect(() => {
+        (async () => {
+            try {
+                // Use Polyfill to get current location
+                Location.installWebGeolocationPolyfill();
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    setErrorMsg('Permission to access location was denied');
+                    return;
+                }
+                // Get current position
+                const current_location = await Location.getCurrentPositionAsync();
+                setPosition([
+                    current_location.coords.latitude,
+                    current_location.coords.longitude,
+                ]);
+            } catch (error: any) {
+                setErrorMsg(error.message);
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, []);
 
-  if (loading) {
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <Text>Loading map…</Text>
+            </View>
+        );
+    }
+    if (errorMsg) {
+        return (
+            <View style={styles.container}>
+                <Text>{errorMsg}</Text>
+            </View>
+        );
+    }
     return (
-      <View style={styles.container}>
-      </View>
+        <View style={styles.container}>
+            <MapContainer
+                center={position}
+                zoom={13}
+                style={styles.map}
+                scrollWheelZoom
+            >
+                <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+                />
+                <Marker position={position} />
+            </MapContainer>
+        </View>
     );
-  }
-
-  return (
-    <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: latitude,
-          longitude: longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        }}
-      />
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  }
-},);
+    container: { flex: 1 },
+    map: { width: '100%', height: '100%' },
+});
