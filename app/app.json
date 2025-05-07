@@ -9,10 +9,7 @@
         "userInterfaceStyle": "automatic",
         "newArchEnabled": true,
         "ios": {
-            "supportsTablet": true,
-            "config": {
-                "googleMapsApiKey": "YOUR_KEY_HERE"
-            }
+            "supportsTablet": true
         },
         "android": {
             "adaptiveIcon": {
@@ -25,12 +22,7 @@
                 "android.permission.INTERNET"
             ],
             "package": "com.Rongbin99.GoMommy",
-            "edgeToEdgeEnabled": true,
-            "config": {
-                "googleMaps": {
-                    "apiKey": "YOUR_KEY_HERE"
-                }
-            }
+            "edgeToEdgeEnabled": true
         },
         "web": {
             "bundler": "metro",
