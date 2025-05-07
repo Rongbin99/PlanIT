@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "GoMommy server",
+  "description": "PlanIT server",
   "main": "index.js",
   "type": "module",
   "scripts": {
