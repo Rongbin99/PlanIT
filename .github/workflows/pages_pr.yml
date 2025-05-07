@@ -1,12 +1,13 @@
 # Sample workflow for building and deploying a React Native Web app to GitHub Pages
 #
 #
-name: Deploy React Native Web App to Pages
+name: Test Build React Native Web App (PR)
 
 on:
   # Runs on pushes targeting the web branch
   push:
-    branches: ["main-web"]
+    pull_request:
+      branches: ["main-web"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -44,16 +45,3 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./web-build
-
-  # Deployment job
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        
