@@ -1,11 +1,11 @@
 {
     "expo": {
-        "name": "GoMommy",
-        "slug": "GoMommy",
+        "name": "PlanIT",
+        "slug": "PlanIT",
         "version": "1.0.0",
         "orientation": "portrait",
         "icon": "./assets/images/icon.png",
-        "scheme": "gomommy",
+        "scheme": "planit",
         "userInterfaceStyle": "automatic",
         "newArchEnabled": true,
         "ios": {
@@ -24,7 +24,7 @@
                 "android.permission.ACCESS_FINE_LOCATION",
                 "android.permission.INTERNET"
             ],
-            "package": "com.Rongbin99.GoMommy",
+            "package": "com.Rongbin99.PlanIT",
             "edgeToEdgeEnabled": true,
             "config": {
                 "googleMaps": {
