@@ -1,9 +1,11 @@
+// Library imports
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 
+// Component imports
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -17,27 +19,43 @@ export default function TabLayout() {
                 tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
                 headerShown: false,
                 tabBarButton: HapticTab,
+                tabBarLabelPosition: 'beside-icon',
                 tabBarBackground: TabBarBackground,
                 tabBarStyle: Platform.select({
                     ios: {
                         // Use a transparent background on iOS to show the blur effect
                         position: 'absolute',
+                        height: 80,
                     },
-                    default: {},
+                    default: {
+                        height: 80,
+                    },
                 }),
+                tabBarLabelStyle: {
+                    fontSize: 16,
+                    fontWeight: '600',
+                    marginLeft: 16,
+                },
             }}>
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Home',
-                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+                    title: 'Map',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={44} name="map-search" color={color} />,
                 }}
             />
             <Tabs.Screen
-                name="explore"
+                name="profile"
                 options={{
-                    title: 'Explore',
-                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+                    title: 'Profile',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={44} name="account-circle" color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="temp"
+                options={{
+                    title: 'temp123',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={44} name="microsoft-visual-studio-code" color={color} />,
                 }}
             />
         </Tabs>
