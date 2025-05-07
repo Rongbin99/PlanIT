@@ -6,7 +6,7 @@ name: Deploy React Native Web App to Pages
 on:
   # Runs on pushes targeting the web branch
   push:
-    branches: ["topic/pages"]
+    branches: ["main-web"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
