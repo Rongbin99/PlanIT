@@ -1,6 +1,6 @@
 /**
- * @file 
- * @description
+ * @file planner.js
+ * @description API endpoints for the Trip Planner
  * @copyright Rongbin Gu 2025
  */
 
@@ -87,4 +87,4 @@ router.delete("/:id", async (req, res) => {
     }
 });
 
-export { router as stocksRouter};
+export { router as plannerRouter};

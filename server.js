@@ -9,7 +9,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { stocksRouter } from './routes/stocks.js';
+import { plannerRouter } from './routes/planner.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -19,7 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
-app.use("/stocks", stocksRouter);
+app.use("/planner", plannerRouter);
 
 // Begin backend server
 app.listen(PORT, () => {
