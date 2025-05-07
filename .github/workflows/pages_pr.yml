@@ -40,8 +40,8 @@ jobs:
         # Use npm ci to install dependencies in a virtual test / CICD environment
         run: npm ci
       - name: Build for web
-        run: npx expo export:web
+        run: npx expo export
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./web-build
+          path: ./dist
