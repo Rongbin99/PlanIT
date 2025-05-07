@@ -2,9 +2,9 @@
 
 This [express.js](https://expressjs.com/) backend server responds to API callbacks from the React Native frontend and updates the DB.
 
-[![Backend CodeQL Advanced](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml/badge.svg?branch=main-backend)](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml)
-![GitHub last commit (branch)](https://img.shields.io/github/last-commit/Rongbin99/GoMommy/main-backend)
-![GitHub Release](https://img.shields.io/github/v/release/Rongbin99/GoMommy?style=flat)
+[![Backend CodeQL Advanced](https://github.com/Rongbin99/PlanIT/actions/workflows/codeql.yml/badge.svg?branch=main-backend)](https://github.com/Rongbin99/PlanIT/actions/workflows/codeql.yml)
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/Rongbin99/PlanIT/main-backend)
+![GitHub Release](https://img.shields.io/github/v/release/Rongbin99/PlanIT?style=flat)
 
 
 ## Instructions to Run
@@ -12,7 +12,7 @@ This [express.js](https://expressjs.com/) backend server responds to API callbac
 Clone this Git repository to your local machine.
 
 ```
-git clone https://github.com/Rongbin99/GoMommy
+git clone https://github.com/Rongbin99/PlanIT
 ```
 
 Switch to this branch that contains the codebase for the backend server.
