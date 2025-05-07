@@ -9,19 +9,22 @@ import { Animated, StyleSheet, TextInput, TouchableOpacity, View } from 'react-n
 // Initialize global variables and constants
 const lat_delta = 0.015;
 const long_delta = 0.012;
-const PLACEHOLDER_OPTIONS = [
+const SEARCH_PLACEHOLDER_OPTIONS = [
     'Thinking of your next trip?',
     'Where shall you visit next?',
     "What's for dinner?",
+    "Where would you like to explore?",
 ];
 
+// Main HomeScreen component
 export default function HomeScreen() {
     const glowAnim = useRef(new Animated.Value(0)).current;
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
-    const [displayedPlaceholder, setDisplayedPlaceholder] = useState(PLACEHOLDER_OPTIONS[0]);
+    const [displayedPlaceholder, setDisplayedPlaceholder] = useState(SEARCH_PLACEHOLDER_OPTIONS[0]);
     const placeholderAnim = useRef(new Animated.Value(0)).current;
     const [inputValue, setInputValue] = useState("");
 
+    // Outer search bar glow effect
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
@@ -39,6 +42,7 @@ export default function HomeScreen() {
         ).start();
     }, [glowAnim]);
 
+    // Inner search bar placeholder animation
     useEffect(() => {
         const interval = setInterval(() => {
             // Animate out (cube out)
@@ -49,8 +53,8 @@ export default function HomeScreen() {
             }).start(() => {
                 // Change placeholder
                 setPlaceholderIndex((prev) => {
-                    const next = (prev + 1) % PLACEHOLDER_OPTIONS.length;
-                    setDisplayedPlaceholder(PLACEHOLDER_OPTIONS[next]);
+                    const next = (prev + 1) % SEARCH_PLACEHOLDER_OPTIONS.length;
+                    setDisplayedPlaceholder(SEARCH_PLACEHOLDER_OPTIONS[next]);
                     return next;
                 });
                 // Animate in (cube in)
@@ -65,10 +69,12 @@ export default function HomeScreen() {
         return () => clearInterval(interval);
     }, []);
 
+    // Search bar glow effect
     const glowStyle = {
         borderWidth: 3,
         borderColor: glowAnim.interpolate({
             inputRange: [0, 0.5, 1],
+            // Blue, Purple, Pink
             outputRange: ['#87CEEB', '#9370DB', '#8A2BE2'],
         }),
     };
