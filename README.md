@@ -1,9 +1,9 @@
 # Backend Server
 
-This (express.js)[https://expressjs.com/] backend server responds to API callbacks from the React Native frontend and updates the DB.
+This [express.js](https://expressjs.com/) backend server responds to API callbacks from the React Native frontend and updates the DB.
 
-[![CodeQL Advanced](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml/badge.svg?branch=main-backend)](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml)
-![GitHub branch status](https://img.shields.io/github/checks-status/Rongbin99/GoMommy/main-backend)
+[![Backend CodeQL Advanced](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml/badge.svg?branch=main-backend)](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml)
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/Rongbin99/GoMommy/main-backend)
 ![GitHub Release](https://img.shields.io/github/v/release/Rongbin99/GoMommy?style=flat)
 
 
