@@ -5,7 +5,6 @@ This branch contains the web version of GoMommy. Due to the nature of React Nati
 [![Web CodeQL Advanced](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml/badge.svg?branch=main-web)](https://github.com/Rongbin99/GoMommy/actions/workflows/codeql.yml)
 ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/Rongbin99/GoMommy/main-web)
 ![GitHub Release](https://img.shields.io/github/v/release/Rongbin99/GoMommy?style=flat)
-![Static Badge](https://img.shields.io/badge/visit%20website?link=https%3A%2F%2Frongbin99.github.io%2FGoMommy)
 
 ## Instructions to Run
 
