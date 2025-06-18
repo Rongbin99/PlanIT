@@ -25,39 +25,42 @@ export default function TabLayout() {
                     ios: {
                         // Use a transparent background on iOS to show the blur effect
                         position: 'absolute',
-                        height: 80,
+                        height: 60,
                     },
                     default: {
-                        height: 80,
+                        height: 60,
                     },
                 }),
                 tabBarLabelStyle: {
-                    fontSize: 16,
+                    fontSize: 12,
                     fontWeight: '600',
-                    marginLeft: 16,
+                    fontFamily: 'Nunito',
                 },
             }}>
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Map',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={44} name="map-search" color={color} />,
+                    title: 'Explore',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="map-search" color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="history"
+                options={{
+                    title: 'Adventures',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="bookmark-outline" color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="profile"
                 options={{
-                    title: 'Profile',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={44} name="account-circle" color={color} />,
-                }}
-            />
-            <Tabs.Screen
-                name="temp"
-                options={{
-                    title: 'temp123',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={44} name="microsoft-visual-studio-code" color={color} />,
+                    title: 'You',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="account-circle" color={color} />,
                 }}
             />
         </Tabs>
     );
 }
+
+// https://icons.expo.fyi/Index
+// filter by material community icons
