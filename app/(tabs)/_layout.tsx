@@ -1,48 +1,66 @@
+// Library imports
+import { Tabs } from 'expo-router';
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Platform } from 'react-native';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+// Component imports
+import { HapticTab } from '@/components/HapticTab';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import TabBarBackground from '@/components/ui/TabBarBackground';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+    const colorScheme = useColorScheme();
 
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <TabBarIcon name="map" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="Profile"
-        options={{
-          tabBarShowLabel: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
-        }}
-      />
-    </Tabs>
-  );
+    return (
+        <Tabs
+            screenOptions={{
+                tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+                headerShown: false,
+                tabBarButton: HapticTab,
+                tabBarLabelPosition: 'below-icon',
+                tabBarBackground: TabBarBackground,
+                tabBarStyle: Platform.select({
+                    ios: {
+                        // Use a transparent background on iOS to show the blur effect
+                        position: 'absolute',
+                        height: 60,
+                    },
+                    default: {
+                        height: 60,
+                    },
+                }),
+                tabBarLabelStyle: {
+                    fontSize: 12,
+                    fontWeight: '600',
+                    fontFamily: 'Nunito',
+                },
+            }}>
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: 'Explore',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="map-search" color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="history"
+                options={{
+                    title: 'Adventures',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="bookmark-outline" color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="profile"
+                options={{
+                    title: 'You',
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="account-circle" color={color} />,
+                }}
+            />
+        </Tabs>
+    );
 }
+
+// https://icons.expo.fyi/Index
+// filter by material community icons
