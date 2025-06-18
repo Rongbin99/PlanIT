@@ -12,8 +12,14 @@ const long_delta = 0.012;
 const SEARCH_PLACEHOLDER_OPTIONS = [
     'Thinking of your next trip?',
     'Where shall you visit next?',
-    "What's for dinner?",
     "Where would you like to explore?",
+    "Plan your perfect weekend getaway",
+    "Discover hidden gems in the city",
+    "Find your next adventure",
+    "Explore local attractions",
+    "Create your dream itinerary",
+    "Search for popular destinations",
+    "Find the best spots to visit",
 ];
 
 // Main HomeScreen component
@@ -122,8 +128,8 @@ export default function HomeScreen() {
             <MapView
                 style={styles.map}
                 initialRegion={{
-                    latitude: 37.78825,
-                    longitude: -122.4324,
+                    latitude: 43.6532,
+                    longitude: -79.3832,
                     latitudeDelta: lat_delta,
                     longitudeDelta: long_delta,
                 }}
@@ -143,22 +149,14 @@ const styles = StyleSheet.create({
     },
     searchContainer: {
         position: 'absolute',
-        top: 50,
-        left: 50,
-        right: 50,
+        bottom: 80,
+        left: 20,
+        right: 20,
         zIndex: 1,
     },
     searchInputContainer: {
         backgroundColor: 'white',
         borderRadius: 30,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
     },
     searchRow: {
         flexDirection: 'row',
@@ -181,7 +179,7 @@ const styles = StyleSheet.create({
         left: 25,
         right: 0,
         color: '#666',
-        fontSize: 16,
+        fontSize: 14,
         top: -10,
     },
 });
