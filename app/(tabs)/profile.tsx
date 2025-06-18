@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { BlurView } from 'expo-blur';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -8,30 +9,37 @@ import { ThemedView } from '@/components/ThemedView';
 export default function ProfileScreen() {
     return (
         <ThemedView style={styles.container}>
-            {/* Profile Header */}
-            <ThemedView style={styles.profileHeader}>
-                <TouchableOpacity style={styles.profileImageContainer}>
-                    <Image
-                        source={require('@/assets/images/default-avatar.jpg')}
-                        style={styles.profileImage}
-                    />
-                    <View style={styles.editIconContainer}>
-                        <MaterialCommunityIcons name="camera" size={20} color="#fff" />
-                    </View>
-                </TouchableOpacity>
-                <ThemedText type="title" style={styles.userName}>John Doe</ThemedText>
-                <ThemedView style={styles.statsContainer}>
-                    <ThemedView style={styles.statItem}>
-                        <ThemedText type="defaultSemiBold">12</ThemedText>
-                        <ThemedText>Adventures</ThemedText>
+            {/* Profile Header with Banner */}
+            <View style={styles.bannerContainer}>
+                <Image
+                    source={require('@/assets/images/profile-banner.jpg')}
+                    style={styles.bannerImage}
+                />
+                <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+                <View style={styles.profileOverlay}>
+                    <TouchableOpacity style={styles.profileImageContainer}>
+                        <Image
+                            source={require('@/assets/images/default-avatar.jpg')}
+                            style={styles.profileImage}
+                        />
+                        <View style={styles.editIconContainer}>
+                            <MaterialCommunityIcons name="camera" size={20} color="#fff" />
+                        </View>
+                    </TouchableOpacity>
+                    <ThemedText type="title" style={styles.userName}>John Doe</ThemedText>
+                    <ThemedView style={styles.statsContainer}>
+                        <ThemedView style={styles.statItem}>
+                            <ThemedText type="defaultSemiBold">12</ThemedText>
+                            <ThemedText>Adventures</ThemedText>
+                        </ThemedView>
+                        <ThemedView style={styles.statDivider} />
+                        <ThemedView style={styles.statItem}>
+                            <ThemedText type="defaultSemiBold">5</ThemedText>
+                            <ThemedText>Places</ThemedText>
+                        </ThemedView>
                     </ThemedView>
-                    <ThemedView style={styles.statDivider} />
-                    <ThemedView style={styles.statItem}>
-                        <ThemedText type="defaultSemiBold">5</ThemedText>
-                        <ThemedText>Places</ThemedText>
-                    </ThemedView>
-                </ThemedView>
-            </ThemedView>
+                </View>
+            </View>
 
             {/* Settings Menu */}
             <ThemedView style={styles.settingsContainer}>
@@ -81,14 +89,28 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    profileHeader: {
+    bannerContainer: {
+        height: 250,
+        position: 'relative',
+    },
+    bannerImage: {
+        width: '100%',
+        height: '100%',
+    },
+    profileOverlay: {
+        position: 'absolute',
+        bottom: -60,
+        left: 0,
+        right: 0,
         alignItems: 'center',
-        paddingTop: 40,
-        paddingBottom: 20,
+        paddingBottom: 10,
     },
     profileImageContainer: {
         position: 'relative',
-        marginBottom: 16,
+        marginBottom: 10,
+        backgroundColor: '#fff',
+        borderRadius: 60,
+        padding: 2,
     },
     profileImage: {
         width: 120,
@@ -110,14 +132,13 @@ const styles = StyleSheet.create({
         fontSize: 24,
         marginBottom: 4,
     },
-    userSince: {
-        color: '#666',
-        marginBottom: 16,
-    },
     statsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 20,
+        backgroundColor: 'rgba(255, 255, 255, 1)',
+        borderRadius: 20,
+        padding: 10,
     },
     statItem: {
         flex: 1,
@@ -131,19 +152,20 @@ const styles = StyleSheet.create({
     },
     settingsContainer: {
         padding: 20,
+        marginTop: 80,
     },
     settingsTitle: {
-        marginBottom: 16,
+        marginBottom: 24,
     },
     settingItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
+        paddingVertical: 14,
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
     settingText: {
         flex: 1,
-        marginLeft: 12,
+        marginLeft: 16,
     },
 });
