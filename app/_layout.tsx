@@ -9,6 +9,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 export default function RootLayout() {
     const colorScheme = useColorScheme();
     const [loaded] = useFonts({
+        Nunito: require('../assets/fonts/Nunito-Regular.ttf'),
+        CircularStd: require('../assets/fonts/CircularStd-Medium.otf'),
         SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     });
 
