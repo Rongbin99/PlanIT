@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Linking } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { BlurView } from 'expo-blur';
 
@@ -7,6 +7,10 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function ProfileScreen() {
+    const openGitHub = () => {
+        Linking.openURL('https://github.com/Rongbin99/PlanIT');
+    };
+
     return (
         <ThemedView style={styles.container}>
             {/* Profile Header with Banner */}
@@ -75,12 +79,23 @@ export default function ProfileScreen() {
                     <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
                 </TouchableOpacity>
 
+                <TouchableOpacity style={styles.settingItem} onPress={openGitHub}>
+                    <MaterialCommunityIcons name="github" size={24} color="#666" />
+                    <ThemedText style={styles.settingText}>Support on GitHub</ThemedText>
+                    <MaterialCommunityIcons name="open-in-new" size={24} color="#666" />
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.settingItem}>
                     <MaterialCommunityIcons name="information-outline" size={24} color="#666" />
                     <ThemedText style={styles.settingText}>Legal & About</ThemedText>
                     <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
                 </TouchableOpacity>
             </ThemedView>
+
+            {/* Copyright */}
+            <ThemedText style={styles.copyright}>
+                &copy; {new Date().getFullYear()} PlanIT. Made by Rongbin99.
+            </ThemedText>
         </ThemedView>
     );
 }
@@ -167,5 +182,13 @@ const styles = StyleSheet.create({
     settingText: {
         flex: 1,
         marginLeft: 16,
+    },
+    copyright: {
+        textAlign: 'center',
+        fontSize: 12,
+        color: '#666',
+        marginTop: 20,
+        marginBottom: 16,
+        opacity: 0.8,
     },
 });
