@@ -1,6 +1,6 @@
-# Backend Server
+# PlanIT Backend API
 
-This [express.js](https://expressjs.com/) backend server responds to API callbacks from the React Native frontend and updates the DB.
+This [express.js](https://expressjs.com/) backend server responds to API callbacks from the React Native frontend and provides endpoints for trip planning and chat history management.
 
 [![Backend CodeQL Advanced](https://github.com/Rongbin99/PlanIT/actions/workflows/codeql.yml/badge.svg?branch=main-backend)](https://github.com/Rongbin99/PlanIT/actions/workflows/codeql.yml)
 ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/Rongbin99/PlanIT/main-backend)
@@ -9,10 +9,18 @@ This [express.js](https://expressjs.com/) backend server responds to API callbac
 
 ## Instructions to Run
 
+### Prerequisites
+
+- Node.js (v16.0.0 or higher)
+- npm or yarn package manager
+
+### Setup
+
 Clone this Git repository to your local machine.
 
 ```
 git clone https://github.com/Rongbin99/PlanIT
+cd PlanIT
 ```
 
 Switch to this branch that contains the codebase for the backend server.
@@ -30,8 +38,32 @@ npm install
 Finally, run the server on your local machine.
 
 ```
-npm run test
+npm run dev
 ```
+
+## API Endpoints
+
+### Base URL
+
+```
+http://localhost:3000
+```
+
+### Health Check
+
+```http
+GET /health
+```
+
+Returns server status and basic information.
+
+### Root Endpoint
+
+```http
+GET /
+```
+
+Returns API information and available endpoints.
 
 ## Contact
 
