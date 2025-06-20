@@ -6,6 +6,22 @@ import { BlurView } from 'expo-blur';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
+// Constants for consistent styling
+const ICON_SIZES = {
+    outline: 24,
+    chevron: 24,
+    camera: 20,
+    edit: 15,
+} as const;
+
+const COLORS = {
+    icon: '#666',
+    primary: '#0a7ea4',
+    divider: '#ccc',
+    border: '#eee',
+    copyright: '#666',
+} as const;
+
 export default function ProfileScreen() {
     const openGitHub = () => {
         Linking.openURL('https://github.com/Rongbin99/PlanIT');
@@ -27,7 +43,7 @@ export default function ProfileScreen() {
                             style={styles.profileImage}
                         />
                         <View style={styles.editIconContainer}>
-                            <MaterialCommunityIcons name="camera" size={20} color="#fff" />
+                            <MaterialCommunityIcons name="camera" size={ICON_SIZES.camera} color="#fff" />
                         </View>
                     </TouchableOpacity>
                     <ThemedText type="title" style={styles.userName}>John Doe</ThemedText>
@@ -50,45 +66,45 @@ export default function ProfileScreen() {
                 <ThemedText type="subtitle" style={styles.settingsTitle}>Settings</ThemedText>
                 
                 <TouchableOpacity style={styles.settingItem}>
-                    <MaterialCommunityIcons name="lock-outline" size={24} color="#666" />
+                    <MaterialCommunityIcons name="lock-outline" size={ICON_SIZES.outline} color={COLORS.icon} />
                     <ThemedText style={styles.settingText}>Change Password</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.chevron} color={COLORS.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem}>
-                    <MaterialCommunityIcons name="account-outline" size={24} color="#666" />
+                    <MaterialCommunityIcons name="account-outline" size={ICON_SIZES.outline} color={COLORS.icon} />
                     <ThemedText style={styles.settingText}>Account</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.chevron} color={COLORS.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem}>
-                    <MaterialCommunityIcons name="palette-outline" size={24} color="#666" />
+                    <MaterialCommunityIcons name="palette-outline" size={ICON_SIZES.outline} color={COLORS.icon} />
                     <ThemedText style={styles.settingText}>Appearance</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.chevron} color={COLORS.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem}>
-                    <MaterialCommunityIcons name="star-outline" size={24} color="#666" />
+                    <MaterialCommunityIcons name="star-outline" size={ICON_SIZES.outline} color={COLORS.icon} />
                     <ThemedText style={styles.settingText}>Rate Us</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.chevron} color={COLORS.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem}>
-                    <MaterialCommunityIcons name="update" size={24} color="#666" />
+                    <MaterialCommunityIcons name="update" size={ICON_SIZES.outline} color={COLORS.icon} />
                     <ThemedText style={styles.settingText}>Check for Updates</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.chevron} color={COLORS.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem} onPress={openGitHub}>
-                    <MaterialCommunityIcons name="github" size={24} color="#666" />
+                    <MaterialCommunityIcons name="github" size={ICON_SIZES.outline} color={COLORS.icon} />
                     <ThemedText style={styles.settingText}>Support on GitHub</ThemedText>
-                    <MaterialCommunityIcons name="open-in-new" size={24} color="#666" />
+                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.outline} color={COLORS.icon} />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.settingItem}>
-                    <MaterialCommunityIcons name="information-outline" size={24} color="#666" />
+                    <MaterialCommunityIcons name="information-outline" size={ICON_SIZES.outline} color={COLORS.icon} />
                     <ThemedText style={styles.settingText}>Legal & About</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.chevron} color={COLORS.icon} />
                 </TouchableOpacity>
             </ThemedView>
 
@@ -136,8 +152,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: '#0a7ea4',
-        borderRadius: 15,
+        backgroundColor: COLORS.primary,
+        borderRadius: ICON_SIZES.edit,
         width: 30,
         height: 30,
         justifyContent: 'center',
@@ -162,7 +178,7 @@ const styles = StyleSheet.create({
     statDivider: {
         width: 1,
         height: 30,
-        backgroundColor: '#ccc',
+        backgroundColor: COLORS.divider,
         marginHorizontal: 20,
     },
     settingsContainer: {
@@ -177,7 +193,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: COLORS.border,
     },
     settingText: {
         flex: 1,
@@ -186,7 +202,7 @@ const styles = StyleSheet.create({
     copyright: {
         textAlign: 'center',
         fontSize: 12,
-        color: '#666',
+        color: COLORS.copyright,
         marginTop: 20,
         marginBottom: 16,
         opacity: 0.8,
