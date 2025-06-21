@@ -23,6 +23,14 @@ export default function RootLayout() {
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen 
+                    name="chat" 
+                    options={{ 
+                        headerShown: false,
+                        presentation: 'card',
+                        animation: 'slide_from_right',
+                    }} 
+                />
                 <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="auto" />

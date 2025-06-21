@@ -6,7 +6,7 @@ import { BlurView } from 'expo-blur';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
-// Constants for consistent styling
+// Constants for modularization
 const ICON_SIZES = {
     outline: 24,
     chevron: 24,
