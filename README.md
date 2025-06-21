@@ -20,6 +20,11 @@ Clone this Git repository to your local machine.
 
 ```
 git clone https://github.com/Rongbin99/PlanIT
+```
+
+Change directory to this project.
+
+```
 cd PlanIT
 ```
 
