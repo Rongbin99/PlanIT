@@ -38,6 +38,12 @@ Clone this Git repository to your local machine.
 git clone https://github.com/Rongbin99/PlanIT
 ```
 
+Change directory to this project.
+
+```
+cd PlanIT
+```
+
 Switch to this branch which contains the codebase for the mobile-based project.
 
 ```
