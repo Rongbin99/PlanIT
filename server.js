@@ -39,7 +39,13 @@ const app = express();
 
 // Security middleware
 app.use(helmet({
-    contentSecurityPolicy: false, // Disable for API-only server
+    contentSecurityPolicy: {
+        directives: {
+            "default-src": ["'self'"],
+            "script-src": ["'self'"],
+            "style-src": ["'self'"],
+        },
+    },
     crossOriginEmbedderPolicy: false
 }));
 
