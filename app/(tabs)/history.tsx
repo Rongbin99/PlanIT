@@ -1,12 +1,11 @@
 /**
  * HistoryScreen Component
  * 
- * Displays a list of past chat conversations with search functionality and management.
- * Features pull-to-refresh, chat deletion, navigation to existing chats, and empty states.
- * Integrates with local storage and provides a clean interface for chat history management.
+ * Displays a list of past trip plans with search functionality and management.
+ * Features pull-to-refresh, trip deletion, navigation to existing trips, and empty states.
+ * Integrates with local storage and provides a clean interface for trip history management.
  * 
  * @author Rongbin Gu (@rongbin99)
- * @version 1.0.0
  */
 
 // ========================================
@@ -16,17 +15,19 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TIME_CONSTANTS } from '@/constants/DesignTokens';
 
 // ========================================
 // TYPE DEFINITIONS
 // ========================================
 
 /**
- * Individual chat message structure
+ * Individual trip plan message structure
  */
-interface ChatMessage {
+interface TripPlanMessage {
     id: string;
     type: 'user' | 'ai';
     content: string;
@@ -34,15 +35,14 @@ interface ChatMessage {
 }
 
 /**
- * Chat history item for list display
- * Optimized structure for history overview
+ * Trip plan history item for list display
+ * Optimized structure for history list overview
  */
-interface ChatHistoryItem {
+interface TripPlanHistoryItem {
     id: string;
     title: string;
-    lastMessage: string;
-    timestamp: string;
-    messageCount: number;
+    location: string;
+    lastUpdated: string;
     searchData?: Record<string, any>;
 }
 
@@ -50,16 +50,16 @@ interface ChatHistoryItem {
  * Props for FlatList renderItem function
  */
 interface RenderItemProps {
-    item: ChatHistoryItem;
+    item: TripPlanHistoryItem;
     index: number;
 }
 
 /**
  * API response for chat history
  */
-interface ChatHistoryResponse {
+interface TripPlanHistoryResponse {
     success: boolean;
-    chats: ChatHistoryItem[];
+    trips_list: TripPlanHistoryItem[];
     error?: string;
 }
 
@@ -67,80 +67,35 @@ interface ChatHistoryResponse {
 // CONSTANTS & CONFIGURATION
 // ========================================
 
-/**
- * UI color scheme for consistent styling
- */
-const COLORS = {
-    primary: '#4B6CB7',
-    secondary: '#888',
-    text: '#333',
-    lightText: '#666',
-    background: '#f8f9fa',
-    white: '#ffffff',
-    border: '#e0e0e0',
-    accent: '#e3f2fd',
-} as const;
-
-/**
- * Layout and spacing constants
- */
-const LAYOUT = {
-    headerPaddingTop: 60,
-    headerPaddingHorizontal: 20,
-    headerPaddingBottom: 20,
-    contentPadding: 20,
-    cardMarginBottom: 12,
-    cardPadding: 16,
-    cardBorderRadius: 12,
-    emptyStatePadding: 40,
-    buttonBorderRadius: 24,
-    buttonPadding: 12,
-    hitSlop: {
-        top: 10,
-        bottom: 10,
-        left: 10,
-        right: 10,
-    },
-} as const;
-
-/**
- * Time calculation constants
- */
-const TIME_CONSTANTS = {
-    HOUR_MS: 1000 * 60 * 60,
-    DAY_MS: 1000 * 60 * 60 * 24,
-    WEEK_MS: 1000 * 60 * 60 * 24 * 7,
-} as const;
+const BACKEND_URL = 'http://localhost:3000';
+const TAG = "[HistoryScreen]";
+const STORAGE_KEY = 'tripPlanHistory';
+const DEMO_MODE = true; // true -> demo data, false -> production data
 
 // ========================================
 // SAMPLE DATA
 // ========================================
 
-/**
- * Demo chat data for development and testing
- * In production, this would be replaced with API calls or storage retrieval
- */
-const SAMPLE_CHAT_DATA: ChatHistoryItem[] = [
+// Demo trip plans for development and testing purposes
+// In production, this would be replaced with API calls or storage retrieval
+const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
     {
-        id: 'chat_001',
-        title: 'Best restaurants in downtown Toronto',
-        lastMessage: 'I found some amazing restaurants that match your criteria...',
-        timestamp: new Date(Date.now() - TIME_CONSTANTS.HOUR_MS).toISOString(),
-        messageCount: 4,
+        id: 'trip_001',
+        title: 'After work friends hangout and food in downtown Toronto',
+        location: 'Toronto, Ontario, Canada',
+        lastUpdated: new Date(Date.now() - TIME_CONSTANTS.HOUR_MS).toISOString(),
     },
     {
-        id: 'chat_002',
+        id: 'trip_002',
         title: 'Weekend activities for couples',
-        lastMessage: 'Here are some romantic spots perfect for a date...',
-        timestamp: new Date(Date.now() - TIME_CONSTANTS.DAY_MS).toISOString(),
-        messageCount: 6,
+        location: 'Montréal, Quebec, Canada',
+        lastUpdated: new Date(Date.now() - TIME_CONSTANTS.DAY_MS).toISOString(),
     },
     {
-        id: 'chat_003',
+        id: 'trip_003',
         title: 'Family-friendly activities in Vancouver',
-        lastMessage: 'These activities are perfect for families with children...',
-        timestamp: new Date(Date.now() - TIME_CONSTANTS.DAY_MS * 2).toISOString(),
-        messageCount: 8,
+        location: 'Vancouver, British Columbia, Canada',
+        lastUpdated: new Date(Date.now() - TIME_CONSTANTS.DAY_MS * 2).toISOString(),
     },
 ];
 
@@ -148,101 +103,103 @@ const SAMPLE_CHAT_DATA: ChatHistoryItem[] = [
 // MAIN COMPONENT
 // ========================================
 export default function HistoryScreen() {
-    // ========================================
-    // STATE MANAGEMENT
-    // ========================================
-    
-    const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+    // State management
+    const [tripPlanHistory, setTripPlanHistory] = useState<TripPlanHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    console.log('[HistoryScreen] Component initialized with state:', {
-        chatCount: chatHistory.length,
-        isLoading,
-        refreshing
-    });
-
-    // ========================================
-    // EFFECTS
-    // ========================================
+    // Effects
+    useEffect(() => {
+        console.log(TAG, 'Screen initialized with state:', {
+            tripPlanCount: tripPlanHistory.length,
+            isLoading,
+            refreshing
+        });
+    }, [tripPlanHistory, isLoading, refreshing]);
     
     /**
-     * Load chat history when screen comes into focus
+     * Load trip plan history when screen comes into focus
      * Uses useFocusEffect to refresh data when user returns to this tab
      */
     useFocusEffect(
         useCallback(() => {
-            console.log('[HistoryScreen] Screen focused, loading chat history');
-            loadChatHistory();
+            console.log(TAG, 'Screen focused, loading trip plan history');
+            loadTripPlanHistory();
         }, [])
     );
 
-    // ========================================
-    // DATA MANAGEMENT
-    // ========================================
+    // Data management
     
     /**
-     * Loads chat history from storage or API
-     * Handles both initial load and refresh scenarios
+     * Loads and handles trip plan history from local storage or API (account-specific)
      */
-    const loadChatHistory = async (): Promise<void> => {
+    const loadTripPlanHistory = async (): Promise<void> => {
         try {
-            console.log('[HistoryScreen] Starting chat history load process');
+            console.log(TAG, 'Starting trip plan history loading process');
             setIsLoading(true);
             
             // First, try to load from local storage for immediate display
-            const localChats = await loadChatHistoryFromStorage();
-            if (localChats.length > 0) {
-                console.log('[HistoryScreen] Loaded', localChats.length, 'chats from local storage');
-                setChatHistory(localChats);
+            const localTripPlans = await loadTripPlanHistoryFromStorage();
+            if (localTripPlans.length > 0) {
+                console.log(TAG, 'Loaded', localTripPlans.length, 'trip plans from local storage');
+                setTripPlanHistory(localTripPlans);
+            }
+            
+            // Skip API fetching in demo mode
+            if (DEMO_MODE) {
+                console.info(TAG, 'Demo mode enabled, skipping API fetch');
+                return;
             }
             
             // Then fetch from API for updates
             try {
-                console.log('[HistoryScreen] Fetching chat history from API: /api/chat');
-                const apiChats = await fetchChatHistoryFromAPI();
-                console.log('[HistoryScreen] Fetched', apiChats.length, 'chats from API');
+                const apiTripPlans = await fetchTripPlanHistoryFromAPI();
                 
-                // Merge and sort by timestamp
-                const mergedChats = mergeChatHistory(localChats, apiChats);
-                console.log('[HistoryScreen] Merged chat history, total:', mergedChats.length);
-                setChatHistory(mergedChats);
-                
-                // Update local storage with merged data
-                await saveChatHistoryToStorage(mergedChats);
-                
+                if (apiTripPlans.length > 0) {
+                    console.log(TAG, 'Fetched', apiTripPlans.length, 'trip plans from API');
+                    setTripPlanHistory(apiTripPlans);
+                    // Save API data to local storage for offline use
+                    await saveTripPlanHistoryToStorage(apiTripPlans);
+                } else {
+                    console.log(TAG, 'No trip plans found in API, using local data');
+                }
             } catch (apiError) {
-                console.warn('[HistoryScreen] API fetch failed, using local data only:', apiError);
-                // If API fails, continue with local data
+                console.error(TAG, 'API fetch failed, using local data:', apiError);
             }
-            
         } catch (error) {
-            console.error('[HistoryScreen] Error loading chat history:', error);
+            console.error(TAG, 'Error loading trip plan history:', error);
             handleLoadError();
         } finally {
             setIsLoading(false);
-            console.log('[HistoryScreen] Chat history load process completed');
+            console.log(TAG, 'Trip plan history load process completed');
         }
     };
 
     /**
-     * Loads chat history from local storage (AsyncStorage)
+     * Loads trip plan history from local storage using AsyncStorage
      */
-    const loadChatHistoryFromStorage = async (): Promise<ChatHistoryItem[]> => {
+    const loadTripPlanHistoryFromStorage = async (): Promise<TripPlanHistoryItem[]> => {
         try {
-            console.log('[HistoryScreen] Loading chat history from local storage');
+            console.log(TAG, 'Loading trip plan history from local storage');
             
-            // TODO: Replace with actual AsyncStorage implementation
-            // const storedChats = await AsyncStorage.getItem('chatHistory');
-            // const chats = storedChats ? JSON.parse(storedChats) : [];
+            // If demo mode is enabled, use sample data
+            if (DEMO_MODE) {
+                console.info(TAG, 'Demo mode enabled, using sample data');
+                return SAMPLE_TRIP_PLAN_DATA;
+            }
+            // Otherwise, load from local storage then API
+            const storedTripPlans = await AsyncStorage.getItem(STORAGE_KEY);
             
-            // For demo, simulate loading delay and return sample data
-            await new Promise(resolve => setTimeout(resolve, 300));
-            console.log('[HistoryScreen] Local storage returned', SAMPLE_CHAT_DATA.length, 'sample chats');
-            return SAMPLE_CHAT_DATA;
-            
+            if (storedTripPlans) {
+                const tripPlans: TripPlanHistoryItem[] = JSON.parse(storedTripPlans);
+                console.log(TAG, 'Loaded', tripPlans.length, 'trip plans from local storage');
+                return tripPlans;
+            } else {
+                console.log(TAG, 'No trip plans found in local storage, returning empty array');
+                return [];
+            }
         } catch (error) {
-            console.error('[HistoryScreen] Error loading from storage:', error);
+            console.error(TAG, 'Error loading from storage:', error);
             return [];
         }
     };
@@ -250,10 +207,10 @@ export default function HistoryScreen() {
     /**
      * Fetches chat history from backend API
      */
-    const fetchChatHistoryFromAPI = async (): Promise<ChatHistoryItem[]> => {
-        console.log('[HistoryScreen] Making API request to fetch chat history');
+    const fetchTripPlanHistoryFromAPI = async (): Promise<TripPlanHistoryItem[]> => {
+        console.log(TAG, `Fetching trip plan history from API: ${BACKEND_URL}/api/chat`);
         
-        const response = await fetch('YOUR_BACKEND_URL/api/chat', {
+        const response = await fetch(`${BACKEND_URL}/api/chat`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -262,69 +219,39 @@ export default function HistoryScreen() {
             },
         });
 
-        console.log('[HistoryScreen] API response status:', response.status);
-
+        console.log(TAG, 'API response status:', response.status, response.statusText);
+        // API response error handling
         if (!response.ok) {
-            const errorMessage = `HTTP error! status: ${response.status}`;
-            console.error('[HistoryScreen] API request failed:', errorMessage);
+            const errorText = await response.text();
+            const errorMessage = `HTTP response error! ${errorText}`;
+            console.error(TAG, 'API request failed:', errorMessage);
             throw new Error(errorMessage);
         }
 
-        const result: ChatHistoryResponse = await response.json();
-        console.log('[HistoryScreen] API response data:', {
+        const result: TripPlanHistoryResponse = await response.json();
+        console.log(TAG, 'API response data:', {
             success: result.success,
-            chatCount: result.chats?.length || 0,
+            tripPlanCount: result.trips_list?.length || 0,
             error: result.error
         });
 
         if (!result.success) {
-            throw new Error(result.error || 'Failed to fetch chat history');
+            throw new Error(result.error || 'Failed to fetch trip plan history');
         }
 
-        return result.chats || [];
+        return result.trips_list || [];
     };
 
     /**
-     * Merges local and API chat data, removing duplicates and sorting by timestamp
+     * Saves trip plan history to local storage using AsyncStorage
      */
-    const mergeChatHistory = (localChats: ChatHistoryItem[], apiChats: ChatHistoryItem[]): ChatHistoryItem[] => {
-        console.log('[HistoryScreen] Merging chat history - local:', localChats.length, 'api:', apiChats.length);
-        
-        // Create a map to avoid duplicates based on chat ID
-        const chatMap = new Map<string, ChatHistoryItem>();
-        
-        // Add local chats first
-        localChats.forEach(chat => {
-            chatMap.set(chat.id, chat);
-        });
-        
-        // Add/update with API chats (API data takes precedence)
-        apiChats.forEach(chat => {
-            chatMap.set(chat.id, chat);
-        });
-        
-        // Convert back to array and sort by timestamp (newest first)
-        const mergedChats = Array.from(chatMap.values()).sort((a, b) => 
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-        
-        console.log('[HistoryScreen] Merge completed, final count:', mergedChats.length);
-        return mergedChats;
-    };
-
-    /**
-     * Saves chat history to local storage
-     */
-    const saveChatHistoryToStorage = async (chats: ChatHistoryItem[]): Promise<void> => {
+    const saveTripPlanHistoryToStorage = async (tripPlans: TripPlanHistoryItem[]): Promise<void> => {
         try {
-            console.log('[HistoryScreen] Saving', chats.length, 'chats to local storage');
-            
-            // TODO: Replace with actual AsyncStorage implementation
-            // await AsyncStorage.setItem('chatHistory', JSON.stringify(chats));
-            
-            console.log('[HistoryScreen] Chat history saved to local storage successfully');
+            console.log(TAG, 'Saving', tripPlans.length, 'trip plans to local storage');
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tripPlans));
+            console.log(TAG, 'Trip plan history saved to local storage successfully');
         } catch (error) {
-            console.error('[HistoryScreen] Error saving to storage:', error);
+            console.error(TAG, 'Error saving to storage:', error);
         }
     };
 
@@ -332,34 +259,33 @@ export default function HistoryScreen() {
      * Handles pull-to-refresh functionality
      */
     const onRefresh = async (): Promise<void> => {
-        console.log('[HistoryScreen] Pull-to-refresh triggered');
+        console.log(TAG, 'Pull-to-refresh triggered');
         setRefreshing(true);
-        await loadChatHistory();
+        await loadTripPlanHistory();
         setRefreshing(false);
-        console.log('[HistoryScreen] Pull-to-refresh completed');
+        console.log(TAG, 'Pull-to-refresh completed');
     };
 
     /**
-     * Handles errors during chat history loading
+     * Handles errors during trip plan history loading
      */
     const handleLoadError = (): void => {
-        console.warn('[HistoryScreen] Showing load error alert to user');
+        console.warn(TAG, 'Load error alert shown to user');
         Alert.alert(
             'Load Error',
-            'Failed to load chat history. Please try again.',
+            'Failed to load trip plan history. Please try again.',
             [
                 {
-                    text: 'Retry',
+                    text: 'Try Again',
                     onPress: () => {
-                        console.log('[HistoryScreen] User chose to retry loading');
-                        loadChatHistory();
+                        console.log(TAG, 'User chose to retry loading');
+                        loadTripPlanHistory();
                     },
                 },
                 {
-                    text: 'Cancel',
-                    style: 'cancel',
+                    text: 'Continue Offline',
                     onPress: () => {
-                        console.log('[HistoryScreen] User cancelled retry');
+                        console.log(TAG, 'User chose to continue with offline data');
                     },
                 },
             ]
@@ -371,28 +297,30 @@ export default function HistoryScreen() {
     // ========================================
     
     /**
-     * Handles navigation to existing chat conversation
-     * @param chat - Chat history item to open
+     * Handles navigation to existing trip planning session
+     * @param tripPlan - Trip planning session to open
      */
-    const handleChatPress = (chat: ChatHistoryItem): void => {
-        console.log('[HistoryScreen] Chat item pressed:', {
-            id: chat.id,
-            title: chat.title,
-            messageCount: chat.messageCount
+    const handleTripPlanPress = (tripPlan: TripPlanHistoryItem): void => {
+        // Log session item to console
+        console.log(TAG, 'Trip plan item pressed:', {
+            id: tripPlan.id,
+            title: tripPlan.title,
+            location: tripPlan.location
         });
         
         try {
+            // Navigate to the chat screen with the trip plan ID
             router.push({
                 pathname: '/chat' as any,
                 params: {
-                    chatId: chat.id,
-                    existingChat: 'true'
+                    tripPlanId: tripPlan.id,
+                    existingTripPlan: 'true'
                 }
             });
-            console.log('[HistoryScreen] Navigation to chat successful');
+            console.log(TAG, 'Navigation to trip plan successful:', tripPlan.id);
         } catch (error) {
-            console.error('[HistoryScreen] Navigation error:', error);
-            Alert.alert('Error', 'Failed to open chat. Please try again.');
+            console.error(TAG, 'Navigation error:', error);
+            Alert.alert('Error', 'Failed to open trip plan. Please try again.');
         }
     };
 
@@ -400,49 +328,52 @@ export default function HistoryScreen() {
      * Handles navigation to main search screen
      */
     const handleStartExploring = (): void => {
-        console.log('[HistoryScreen] Start exploring button pressed');
+        console.log(TAG, 'Start exploring button pressed');
         
         try {
+            // Navigate to the main screen (index.tsx)
             router.push('/(tabs)/' as any);
-            console.log('[HistoryScreen] Navigation to main screen successful');
+            console.log(TAG, 'Navigation to main screen successful');
         } catch (error) {
-            console.error('[HistoryScreen] Navigation error:', error);
+            console.error(TAG, 'Navigation error:', error);
             Alert.alert('Error', 'Failed to navigate. Please try again.');
         }
     };
 
     // ========================================
-    // CHAT MANAGEMENT
+    // TRIP PLAN MANAGEMENT
     // ========================================
     
     /**
-     * Handles chat deletion with confirmation
-     * @param chatId - ID of chat to delete
+     * Handles trip plan deletion with confirmation
+     * @param tripPlanId - ID of trip plan to delete
      */
-    const handleDeleteChat = (chatId: string): void => {
-        const chatToDelete = chatHistory.find(chat => chat.id === chatId);
-        console.log('[HistoryScreen] Delete chat requested:', {
-            id: chatId,
-            title: chatToDelete?.title
+    const handleDeleteTripPlan = (tripPlanId: string): void => {
+        const tripPlanToDelete = tripPlanHistory.find(tripPlan => tripPlan.id === tripPlanId);
+        console.log(TAG, 'Delete trip plan requested:', {
+            id: tripPlanId,
+            title: tripPlanToDelete?.title,
+            location: tripPlanToDelete?.location
         });
         
+        // Popup confirmation for deletion from user
         Alert.alert(
-            'Delete Conversation',
-            `Are you sure you want to delete "${chatToDelete?.title}"?`,
+            'Delete Trip Plan',
+            `Are you sure you want to delete "${tripPlanToDelete?.title}"?`,
             [
                 {
                     text: 'Cancel',
                     style: 'cancel',
                     onPress: () => {
-                        console.log('[HistoryScreen] User cancelled deletion');
+                        console.log(TAG, 'User cancelled deletion request');
                     },
                 },
                 {
                     text: 'Delete',
                     style: 'destructive',
                     onPress: () => {
-                        console.log('[HistoryScreen] User confirmed deletion');
-                        performChatDeletion(chatId);
+                        console.log(TAG, 'User confirmed deletion request');
+                        performTripPlanDeletion(tripPlanId);
                     },
                 },
             ]
@@ -450,25 +381,23 @@ export default function HistoryScreen() {
     };
 
     /**
-     * Performs the actual chat deletion
-     * @param chatId - ID of chat to delete
+     * Performs the actual trip plan deletion
+     * @param tripPlanId - ID of trip plan to delete
      */
-    const performChatDeletion = async (chatId: string): Promise<void> => {
+    const performTripPlanDeletion = async (tripPlanId: string): Promise<void> => {
         try {
-            console.log('[HistoryScreen] Starting chat deletion process for:', chatId);
-            
+            console.log(TAG, 'Starting trip plan deletion process for:', tripPlanId);
             // Update local state immediately for responsive UX
-            const updatedChats = chatHistory.filter(chat => chat.id !== chatId);
-            setChatHistory(updatedChats);
-            console.log('[HistoryScreen] Local state updated, remaining chats:', updatedChats.length);
-            
+            const updatedTripPlans = tripPlanHistory.filter(tripPlan => tripPlan.id !== tripPlanId);
+            setTripPlanHistory(updatedTripPlans);
+            console.log(TAG, 'Local state updated, remaining trip plans:', updatedTripPlans.length);
             // Save to local storage
-            await saveChatHistoryToStorage(updatedChats);
+            await saveTripPlanHistoryToStorage(updatedTripPlans);
             
-            // TODO: Send delete request to backend
+            // Send delete request to backend
             try {
-                console.log('[HistoryScreen] Sending delete request to API');
-                const response = await fetch(`YOUR_BACKEND_URL/api/chat/${chatId}`, {
+                console.log(TAG, 'Sending delete request to API');
+                const response = await fetch(`${BACKEND_URL}/api/chat/${tripPlanId}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -476,24 +405,22 @@ export default function HistoryScreen() {
                     },
                 });
                 
-                console.log('[HistoryScreen] Delete API response status:', response.status);
+                console.log(TAG, 'Delete API response status:', response.status, response.statusText);
                 
                 if (!response.ok) {
-                    throw new Error(`Failed to delete from server: ${response.status}`);
+                    throw new Error(`Failed to delete from server: ${response.status} ${response.statusText}`);
                 }
-                
-                console.log('[HistoryScreen] Chat deleted from server successfully');
+                // Otherwise, log success message
+                console.log(TAG, 'Trip plan deleted from server successfully');
             } catch (apiError) {
-                console.warn('[HistoryScreen] Server deletion failed, but local deletion succeeded:', apiError);
-                // Local deletion succeeded, so don't rollback
+                console.warn(TAG, 'Server deletion failed, only local deletion succeeded:', apiError);
             }
-            
         } catch (error) {
-            console.error('[HistoryScreen] Error during chat deletion:', error);
+            console.error(TAG, 'Error during trip plan deletion:', error);
             // Rollback on error
-            console.log('[HistoryScreen] Rolling back deletion, reloading chat history');
-            loadChatHistory();
-            Alert.alert('Error', 'Failed to delete chat. Please try again.');
+            console.warn(TAG, 'Rolling back deletion, reloading trip plan history');
+            loadTripPlanHistory();
+            Alert.alert('Error', 'Failed to delete trip plan. Please try again.');
         }
     };
 
@@ -502,7 +429,7 @@ export default function HistoryScreen() {
     // ========================================
     
     /**
-     * Formats timestamp for display in chat list
+     * Formats timestamp for display in trip plan list
      * @param timestamp - ISO timestamp string
      * @returns Human-readable time string
      */
@@ -511,13 +438,17 @@ export default function HistoryScreen() {
         const now = new Date();
         const diff = now.getTime() - date.getTime();
         
+        // Calculate hours and days since timestamp
+        const minutes = Math.floor(diff / TIME_CONSTANTS.MINUTE_MS);
         const hours = Math.floor(diff / TIME_CONSTANTS.HOUR_MS);
         const days = Math.floor(diff / TIME_CONSTANTS.DAY_MS);
         
+        // Format the timestamp based on the difference
         let formattedTime: string;
-        
-        if (hours < 1) {
+        if (minutes < 1) {
             formattedTime = 'Just now';
+        } else if (minutes < 60) {
+            formattedTime = `${minutes}m ago`;
         } else if (hours < 24) {
             formattedTime = `${hours}h ago`;
         } else if (days < 7) {
@@ -529,7 +460,7 @@ export default function HistoryScreen() {
             });
         }
         
-        console.log(`[HistoryScreen] Formatted timestamp ${timestamp} -> ${formattedTime}`);
+        console.log(TAG, `Formatted timestamp ${timestamp} -> ${formattedTime}`);
         return formattedTime;
     };
 
@@ -538,63 +469,59 @@ export default function HistoryScreen() {
     // ========================================
     
     /**
-     * Renders individual chat item in the list
+     * Renders individual trip plans in the list
      * @param renderProps - FlatList render item props
-     * @returns JSX element for chat item
+     * @returns JSX element for trip plan item
      */
-    const renderChatItem = ({ item, index }: RenderItemProps): React.ReactElement => {
-        console.log(`[HistoryScreen] Rendering chat item ${index}:`, {
+    const renderTripPlanItem = ({ item, index }: RenderItemProps): React.ReactElement => {
+        console.log(TAG, `Rendering trip plan item ${index}:`, {
             id: item.id,
             title: item.title,
-            messageCount: item.messageCount
+            location: item.location
         });
         
+        // Render the trip plan item with background image
         return (
             <TouchableOpacity 
-                style={styles.chatItem}
-                onPress={() => handleChatPress(item)}
+                style={styles.tripPlanItem}
+                onPress={() => handleTripPlanPress(item)}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel={`Open chat: ${item.title}`}
+                accessibilityLabel={`Open trip plan: ${item.title}`}
             >
-                <View style={styles.chatContent}>
-                    {/* Chat Header */}
-                    <View style={styles.chatHeader}>
-                        <Text style={styles.chatTitle} numberOfLines={1}>
+                <View style={styles.tripPlanContent}>
+                    {/* Trip Plan Header: Title and timestamp */}
+                    <View style={styles.tripPlanHeader}>
+                        <Text style={styles.tripPlanTitle} numberOfLines={2}>
                             {item.title}
                         </Text>
                         <Text style={styles.timestamp}>
-                            {formatTimestamp(item.timestamp)}
+                            {formatTimestamp(item.lastUpdated)}
                         </Text>
                     </View>
                     
-                    {/* Last Message Preview */}
-                    <Text style={styles.lastMessage} numberOfLines={2}>
-                        {item.lastMessage}
-                    </Text>
-                    
-                    {/* Chat Footer */}
-                    <View style={styles.chatFooter}>
-                        <View style={styles.messageCount}>
+                    {/* Item Footer: Location and Delete Button */}
+                    <View style={styles.tripPlanFooter}>
+                        <View style={styles.locationCount}>
                             <MaterialCommunityIcons 
-                                name="message-outline" 
-                                size={14} 
+                                name="map-marker-outline" 
+                                size={ICON_SIZES.sm} 
                                 color={COLORS.lightText} 
                             />
-                            <Text style={styles.messageCountText}>
-                                {item.messageCount} message{item.messageCount !== 1 ? 's' : ''}
+                            <Text style={styles.locationCountText}>
+                                {item.location}
                             </Text>
                         </View>
                         <TouchableOpacity 
                             style={styles.deleteButton}
-                            onPress={() => handleDeleteChat(item.id)}
+                            onPress={() => handleDeleteTripPlan(item.id)}
                             hitSlop={LAYOUT.hitSlop}
                             accessibilityRole="button"
-                            accessibilityLabel="Delete chat"
+                            accessibilityLabel="Delete trip plan"
                         >
                             <MaterialCommunityIcons 
                                 name="delete-outline" 
-                                size={18} 
+                                size={ICON_SIZES.md} 
                                 color={COLORS.lightText} 
                             />
                         </TouchableOpacity>
@@ -605,23 +532,24 @@ export default function HistoryScreen() {
     };
 
     /**
-     * Renders empty state when no chats exist
+     * Renders empty state when no trip plans exist
      * @returns JSX element for empty state
      */
     const renderEmptyState = (): React.ReactElement => {
-        console.log('[HistoryScreen] Rendering empty state');
+        console.log(TAG, 'Rendering empty state');
         
         return (
             <View style={styles.emptyState}>
                 <MaterialCommunityIcons 
-                    name="chat-outline" 
-                    size={80} 
+                    name="cactus" 
+                    size={96} 
                     color={COLORS.lightText} 
                 />
-                <Text style={styles.emptyTitle}>No Adventures Yet</Text>
+                <Text style={styles.emptyTitle}>No Adventure Plans Yet</Text>
                 <Text style={styles.emptyText}>
-                    Start exploring and your conversations will appear here
+                    Start planning and your PlanITs will appear here!
                 </Text>
+                {/* Start Exploring Button */}
                 <TouchableOpacity 
                     style={styles.startButton}
                     onPress={handleStartExploring}
@@ -635,19 +563,19 @@ export default function HistoryScreen() {
     };
 
     /**
-     * Renders header section with title and chat count
+     * Renders header section with title and PlanIT count
      * @returns JSX element for header
      */
     const renderHeader = (): React.ReactElement => {
-        console.log('[HistoryScreen] Rendering header with', chatHistory.length, 'conversations');
+        console.log(TAG, 'Rendering header with', tripPlanHistory.length, 'trip plans');
         
         return (
             <View style={styles.header}>
                 <ThemedText type="title" style={styles.headerTitle}>
-                    Your Adventures
+                    Your PlanITs
                 </ThemedText>
-                <ThemedText style={styles.headerSubtitle}>
-                    {chatHistory.length} conversation{chatHistory.length !== 1 ? 's' : ''}
+                <ThemedText type="default" style={styles.headerSubtitle}>
+                    {tripPlanHistory.length} trip plan{tripPlanHistory.length !== 1 ? 's' : ''}
                 </ThemedText>
             </View>
         );
@@ -656,11 +584,11 @@ export default function HistoryScreen() {
     // ========================================
     // RENDER
     // ========================================
-    console.log('[HistoryScreen] Rendering component with state:', {
+    console.log(TAG, 'Rendering component with state:', {
         isLoading,
         refreshing,
-        chatCount: chatHistory.length,
-        isEmpty: chatHistory.length === 0
+        tripPlanCount: tripPlanHistory.length,
+        isEmpty: tripPlanHistory.length === 0
     });
 
     return (
@@ -668,17 +596,17 @@ export default function HistoryScreen() {
             {/* Header */}
             {renderHeader()}
 
-            {/* Chat List */}
+            {/* Trip Plan List */}
             <FlatList
-                data={chatHistory}
-                renderItem={renderChatItem}
+                data={tripPlanHistory}
+                renderItem={renderTripPlanItem}
                 keyExtractor={(item) => {
-                    console.log(`[HistoryScreen] Extracting key for item: ${item.id}`);
+                    console.log(TAG, `Extracting key for trip plan: ${item.id}`);
                     return item.id;
                 }}
-                style={styles.chatList}
+                style={styles.tripPlanList}
                 contentContainerStyle={
-                    chatHistory.length === 0 ? styles.emptyContainer : styles.listContent
+                    tripPlanHistory.length === 0 ? styles.emptyContainer : styles.listContent
                 }
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -704,8 +632,7 @@ export default function HistoryScreen() {
                     };
                 }}
                 onEndReached={() => {
-                    console.log('[HistoryScreen] Reached end of list');
-                    // TODO: Implement pagination if needed
+                    console.log(TAG, 'Reached end of list');
                 }}
                 onEndReachedThreshold={0.5}
             />
@@ -724,133 +651,114 @@ const styles = StyleSheet.create({
     
     // Header
     header: {
-        paddingHorizontal: LAYOUT.headerPaddingHorizontal,
-        paddingTop: LAYOUT.headerPaddingTop,
-        paddingBottom: LAYOUT.headerPaddingBottom,
+        paddingHorizontal: LAYOUT.header.paddingHorizontal,
+        paddingTop: LAYOUT.header.paddingTop,
+        paddingBottom: LAYOUT.header.paddingBottom,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
         backgroundColor: COLORS.white,
     },
     headerTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginBottom: 4,
+        fontSize: TYPOGRAPHY.fontSize.xxl,
+        fontWeight: TYPOGRAPHY.fontWeight.bold,
+        marginBottom: SPACING.xs,
     },
     headerSubtitle: {
-        fontSize: 16,
+        fontSize: TYPOGRAPHY.fontSize.base,
         color: COLORS.lightText,
     },
     
-    // Chat List
-    chatList: {
+    // Trip Plan List
+    tripPlanList: {
         flex: 1,
     },
     listContent: {
-        padding: LAYOUT.contentPadding,
+        paddingHorizontal: LAYOUT.content.paddingHorizontal,
+        paddingTop: LAYOUT.content.paddingTop,
     },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: LAYOUT.emptyStatePadding,
+        paddingHorizontal: LAYOUT.emptyState.paddingHorizontal,
     },
     
-    // Chat Items
-    chatItem: {
+    // Trip Plan Items
+    tripPlanItem: {
         backgroundColor: COLORS.white,
-        borderRadius: LAYOUT.cardBorderRadius,
-        marginBottom: LAYOUT.cardMarginBottom,
-        shadowColor: COLORS.text,
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        borderRadius: LAYOUT.card.borderRadius,
+        marginBottom: LAYOUT.card.marginBottom,
+        ...SHADOWS.card,
     },
-    chatContent: {
-        padding: LAYOUT.cardPadding,
+    tripPlanContent: {
+        padding: LAYOUT.card.padding,
     },
-    chatHeader: {
+    tripPlanHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 8,
+        marginBottom: SPACING.sm,
     },
-    chatTitle: {
+    tripPlanTitle: {
         flex: 1,
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: TYPOGRAPHY.fontSize.base,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
         color: COLORS.text,
-        marginRight: 12,
+        marginRight: SPACING.sm + SPACING.xs, // 10
     },
     timestamp: {
-        fontSize: 12,
+        fontSize: TYPOGRAPHY.fontSize.xs,
         color: COLORS.lightText,
         flexShrink: 0,
     },
-    lastMessage: {
-        fontSize: 14,
-        color: COLORS.lightText,
-        lineHeight: 20,
-        marginBottom: 12,
-    },
-    chatFooter: {
+    tripPlanFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    messageCount: {
+    locationCount: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    messageCountText: {
-        fontSize: 12,
+    locationCountText: {
+        fontSize: TYPOGRAPHY.fontSize.xs,
         color: COLORS.lightText,
-        marginLeft: 4,
+        marginLeft: SPACING.xs,
     },
     deleteButton: {
-        padding: 4,
-        borderRadius: 4,
+        padding: SPACING.xs,
+        borderRadius: RADIUS.sm,
     },
     
     // Empty State
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 40,
+        paddingVertical: LAYOUT.emptyState.paddingVertical,
     },
     emptyTitle: {
-        fontSize: 20,
-        fontWeight: '600',
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
         color: COLORS.text,
-        marginTop: 20,
-        marginBottom: 8,
+        marginTop: SPACING.xl,
+        marginBottom: SPACING.sm,
     },
     emptyText: {
-        fontSize: 16,
+        fontSize: TYPOGRAPHY.fontSize.base,
         color: COLORS.lightText,
         textAlign: 'center',
-        lineHeight: 22,
+        lineHeight: TYPOGRAPHY.lineHeight.relaxed,
         marginBottom: 30,
     },
     startButton: {
         backgroundColor: COLORS.primary,
-        paddingHorizontal: 24,
-        paddingVertical: LAYOUT.buttonPadding,
-        borderRadius: LAYOUT.buttonBorderRadius,
-        elevation: 2,
-        shadowColor: COLORS.primary,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
+        paddingHorizontal: LAYOUT.button.paddingHorizontal,
+        paddingVertical: LAYOUT.button.padding,
+        borderRadius: LAYOUT.button.borderRadius,
+        ...SHADOWS.button,
     },
     startButtonText: {
         color: COLORS.white,
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: TYPOGRAPHY.fontSize.base,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
     },
 });
