@@ -26,6 +26,9 @@ Key Features:
 
 Whether you're on vacation or just rediscovering your city, PlanIT helps you make the most of every moment with zero planning stress.
 
+> [!NOTE]
+> **Backend API**: The server-side API powering PlanIT is available at [PlanIT-API Repository](https://github.com/Rongbin99/PlanIT-API). See the API documentation for setup instructions and endpoint details.
+
 ## Preview
 
 WIP
