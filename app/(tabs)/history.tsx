@@ -25,16 +25,6 @@ import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TIME_
 // ========================================
 
 /**
- * Individual trip plan message structure
- */
-interface TripPlanMessage {
-    id: string;
-    type: 'user' | 'ai';
-    content: string;
-    timestamp: string;
-}
-
-/**
  * Trip plan history item for list display
  * Optimized structure for history list overview
  */
