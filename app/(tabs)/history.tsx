@@ -57,7 +57,7 @@ interface TripPlanHistoryResponse {
 // CONSTANTS & CONFIGURATION
 // ========================================
 
-const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = 'http://localhost:3000'; // TODO: change to production URL (AWS Lambda)
 const TAG = "[HistoryScreen]";
 const STORAGE_KEY = 'tripPlanHistory';
 const DEMO_MODE = true; // true -> demo data, false -> production data
@@ -92,6 +92,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
 // ========================================
 // MAIN COMPONENT
 // ========================================
+
 export default function HistoryScreen() {
     // State management
     const [tripPlanHistory, setTripPlanHistory] = useState<TripPlanHistoryItem[]>([]);
