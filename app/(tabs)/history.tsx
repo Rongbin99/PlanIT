@@ -292,9 +292,7 @@ export default function HistoryScreen() {
         );
     };
 
-    // ========================================
-    // NAVIGATION HANDLERS
-    // ========================================
+    // Navigation Handlers
     
     /**
      * Handles navigation to existing trip planning session
@@ -340,9 +338,7 @@ export default function HistoryScreen() {
         }
     };
 
-    // ========================================
-    // TRIP PLAN MANAGEMENT
-    // ========================================
+    // Trip Plan Management
     
     /**
      * Handles trip plan deletion with confirmation
@@ -424,9 +420,7 @@ export default function HistoryScreen() {
         }
     };
 
-    // ========================================
-    // UTILITY FUNCTIONS
-    // ========================================
+    // Utility Functions
     
     /**
      * Formats timestamp for display in trip plan list
@@ -464,9 +458,7 @@ export default function HistoryScreen() {
         return formattedTime;
     };
 
-    // ========================================
-    // RENDER HELPERS
-    // ========================================
+    // Render Helpers
     
     /**
      * Renders individual trip plans in the list
@@ -581,9 +573,7 @@ export default function HistoryScreen() {
         );
     };
 
-    // ========================================
-    // RENDER
-    // ========================================
+    // Render
     console.log(TAG, 'Rendering component with state:', {
         isLoading,
         refreshing,
