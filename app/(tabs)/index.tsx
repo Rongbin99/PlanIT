@@ -6,7 +6,6 @@
  * Features animated search placeholders and dropdown menu with various filter options.
  * 
  * @author Rongbin Gu (@rongbin99)
- * @version 1.0.0
  */
 
 // ========================================
@@ -17,6 +16,7 @@ import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollVi
 import { router } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MapView from 'react-native-maps';
+import * as Location from 'expo-location';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -26,7 +26,8 @@ import MapView from 'react-native-maps';
 const MAP_CONFIG = {
     LAT_DELTA: 0.015,
     LONG_DELTA: 0.012,
-    INITIAL_REGION: {
+    // Fallback to Toronto location if user location is not available
+    DEFAULT_REGION: {
         latitude: 43.6532,
         longitude: -79.3832,
     },
@@ -153,6 +154,16 @@ export default function HomeScreen() {
     const [isDropdownVisible, setIsDropdownVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
+    
+    // Location states
+    const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+    const [locationPermission, setLocationPermission] = useState<Location.LocationPermissionResponse | null>(null);
+    const [mapRegion, setMapRegion] = useState({
+        latitude: MAP_CONFIG.DEFAULT_REGION.latitude as number,
+        longitude: MAP_CONFIG.DEFAULT_REGION.longitude as number,
+        latitudeDelta: MAP_CONFIG.LAT_DELTA as number,
+        longitudeDelta: MAP_CONFIG.LONG_DELTA as number,
+    });
 
     // Filter states - centralized filter management
     const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>({
@@ -254,6 +265,64 @@ export default function HomeScreen() {
             useNativeDriver: false, // Height animation requires layout
         }).start();
     }, [isDropdownVisible, dropdownAnim]);
+
+    /**
+     * Location permission and GPS detection
+     * Requests location permission and gets user's current location
+     */
+    useEffect(() => {
+        console.log('[HomeScreen] Setting up location services');
+        
+        const setupLocation = async () => {
+            try {
+                // Request location permission
+                console.log('[HomeScreen] Requesting location permission');
+                const permission = await Location.requestForegroundPermissionsAsync();
+                setLocationPermission(permission);
+                
+                if (permission.status !== 'granted') {
+                    console.warn('[HomeScreen] Location permission denied');
+                    Alert.alert(
+                        'Location Permission',
+                        'Location access is needed to show your current position on the map. Using default location (Toronto).',
+                        [{ text: 'OK' }]
+                    );
+                    return;
+                }
+
+                // Get current location
+                console.log('[HomeScreen] Getting current location');
+                const location = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced,
+                });
+                
+                console.log('[HomeScreen] Location acquired:', {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                });
+                
+                setUserLocation(location);
+                
+                // Update map region to user's location
+                setMapRegion({
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                    latitudeDelta: MAP_CONFIG.LAT_DELTA,
+                    longitudeDelta: MAP_CONFIG.LONG_DELTA,
+                });
+                
+            } catch (error) {
+                console.error('[HomeScreen] Location error:', error);
+                Alert.alert(
+                    'Location Error',
+                    'Unable to get your current location. Using default location (Toronto).',
+                    [{ text: 'OK' }]
+                );
+            }
+        };
+
+        setupLocation();
+    }, []);
 
     // ========================================
     // EVENT HANDLERS
