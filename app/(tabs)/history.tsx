@@ -15,26 +15,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TIME_CONSTANTS } from '@/constants/DesignTokens';
+import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
+import { getChatsFromLocalStorage, convertChatsToHistoryItems, mergeChatsWithLocal, deleteChatFromLocalStorage, TripPlanHistoryItem } from '@/constants/StorageUtils';
 
 // ========================================
 // TYPE DEFINITIONS
 // ========================================
-
-/**
- * Trip plan history item for list display
- * Optimized structure for history list overview
- */
-interface TripPlanHistoryItem {
-    id: string;
-    title: string;
-    location: string;
-    lastUpdated: string;
-    searchData?: Record<string, any>;
-}
 
 /**
  * Props for FlatList renderItem function
@@ -57,10 +46,8 @@ interface TripPlanHistoryResponse {
 // CONSTANTS & CONFIGURATION
 // ========================================
 
-const BACKEND_URL = 'http://localhost:3000'; // TODO: change to production URL (AWS Lambda)
 const TAG = "[HistoryScreen]";
-const STORAGE_KEY = 'tripPlanHistory';
-const DEMO_MODE = true; // true -> demo data, false -> production data
+const DEMO_MODE = false; // true -> demo data, false -> production data
 
 // ========================================
 // SAMPLE DATA
@@ -122,40 +109,44 @@ export default function HistoryScreen() {
     // Data management
     
     /**
-     * Loads and handles trip plan history from local storage or API (account-specific)
+     * Loads and handles trip plan history from local storage and API with merging
      */
     const loadTripPlanHistory = async (): Promise<void> => {
         try {
             console.log(TAG, 'Starting trip plan history loading process');
             setIsLoading(true);
             
-            // First, try to load from local storage for immediate display
+            // First, load from local storage for immediate display
             const localTripPlans = await loadTripPlanHistoryFromStorage();
-            if (localTripPlans.length > 0) {
-                console.log(TAG, 'Loaded', localTripPlans.length, 'trip plans from local storage');
-                setTripPlanHistory(localTripPlans);
-            }
+            console.log(TAG, 'Loaded', localTripPlans.length, 'trip plans from local storage');
             
             // Skip API fetching in demo mode
             if (DEMO_MODE) {
-                console.info(TAG, 'Demo mode enabled, skipping API fetch');
+                console.info(TAG, 'Demo mode enabled, using local data only');
+                setTripPlanHistory(localTripPlans);
                 return;
             }
             
-            // Then fetch from API for updates
+            // Show local data immediately for better UX
+            if (localTripPlans.length > 0) {
+                setTripPlanHistory(localTripPlans);
+            }
+            
+            // Then fetch from API and merge with local data
             try {
                 const apiTripPlans = await fetchTripPlanHistoryFromAPI();
+                console.log(TAG, 'Fetched', apiTripPlans.length, 'trip plans from API');
                 
-                if (apiTripPlans.length > 0) {
-                    console.log(TAG, 'Fetched', apiTripPlans.length, 'trip plans from API');
-                    setTripPlanHistory(apiTripPlans);
-                    // Save API data to local storage for offline use
-                    await saveTripPlanHistoryToStorage(apiTripPlans);
-                } else {
-                    console.log(TAG, 'No trip plans found in API, using local data');
-                }
+                // Merge API data with local data (API takes priority)
+                const mergedTripPlans = mergeChatsWithLocal(apiTripPlans, localTripPlans);
+                console.log(TAG, 'Merged data: API +', apiTripPlans.length, 'Local +', localTripPlans.length, '= Total', mergedTripPlans.length);
+                
+                setTripPlanHistory(mergedTripPlans);
+                // Note: We don't save API data to AsyncStorage here because chats are saved
+                // individually when created. This avoids overwriting newer local data.
             } catch (apiError) {
                 console.error(TAG, 'API fetch failed, using local data:', apiError);
+
             }
         } catch (error) {
             console.error(TAG, 'Error loading trip plan history:', error);
@@ -178,17 +169,13 @@ export default function HistoryScreen() {
                 console.info(TAG, 'Demo mode enabled, using sample data');
                 return SAMPLE_TRIP_PLAN_DATA;
             }
-            // Otherwise, load from local storage then API
-            const storedTripPlans = await AsyncStorage.getItem(STORAGE_KEY);
             
-            if (storedTripPlans) {
-                const tripPlans: TripPlanHistoryItem[] = JSON.parse(storedTripPlans);
-                console.log(TAG, 'Loaded', tripPlans.length, 'trip plans from local storage');
-                return tripPlans;
-            } else {
-                console.log(TAG, 'No trip plans found in local storage, returning empty array');
-                return [];
-            }
+            // Load from AsyncStorage using utility
+            const storedChats = await getChatsFromLocalStorage();
+            const tripPlans = convertChatsToHistoryItems(storedChats);
+            
+            console.log(TAG, 'Loaded', tripPlans.length, 'trip plans from local storage');
+            return tripPlans;
         } catch (error) {
             console.error(TAG, 'Error loading from storage:', error);
             return [];
@@ -199,15 +186,11 @@ export default function HistoryScreen() {
      * Fetches chat history from backend API
      */
     const fetchTripPlanHistoryFromAPI = async (): Promise<TripPlanHistoryItem[]> => {
-        console.log(TAG, `Fetching trip plan history from API: ${BACKEND_URL}/api/chat`);
+        console.log(TAG, `Fetching trip plan history from API: ${API_URLS.CHAT_HISTORY}`);
         
-        const response = await fetch(`${BACKEND_URL}/api/chat`, {
+        const response = await fetch(API_URLS.CHAT_HISTORY, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                // Add authentication headers if needed
-                // 'Authorization': `Bearer ${userToken}`,
-            },
+            headers: DEFAULT_HEADERS,
         });
 
         console.log(TAG, 'API response status:', response.status, response.statusText);
@@ -231,19 +214,6 @@ export default function HistoryScreen() {
         }
 
         return result.trips_list || [];
-    };
-
-    /**
-     * Saves trip plan history to local storage using AsyncStorage
-     */
-    const saveTripPlanHistoryToStorage = async (tripPlans: TripPlanHistoryItem[]): Promise<void> => {
-        try {
-            console.log(TAG, 'Saving', tripPlans.length, 'trip plans to local storage');
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tripPlans));
-            console.log(TAG, 'Trip plan history saved to local storage successfully');
-        } catch (error) {
-            console.error(TAG, 'Error saving to storage:', error);
-        }
     };
 
     /**
@@ -368,28 +338,32 @@ export default function HistoryScreen() {
     };
 
     /**
-     * Performs the actual trip plan deletion
+     * Performs the actual trip plan deletion from UI, local storage, and backend
      * @param tripPlanId - ID of trip plan to delete
      */
     const performTripPlanDeletion = async (tripPlanId: string): Promise<void> => {
         try {
             console.log(TAG, 'Starting trip plan deletion process for:', tripPlanId);
+            
             // Update local state immediately for responsive UX
             const updatedTripPlans = tripPlanHistory.filter(tripPlan => tripPlan.id !== tripPlanId);
             setTripPlanHistory(updatedTripPlans);
-            console.log(TAG, 'Local state updated, remaining trip plans:', updatedTripPlans.length);
-            // Save to local storage
-            await saveTripPlanHistoryToStorage(updatedTripPlans);
+            console.log(TAG, 'UI state updated, remaining trip plans:', updatedTripPlans.length);
+            
+            // Delete from local storage
+            try {
+                await deleteChatFromLocalStorage(tripPlanId);
+                console.log(TAG, 'Trip plan deleted from local storage');
+            } catch (storageError) {
+                console.warn(TAG, 'Failed to delete from local storage:', storageError);
+            }
             
             // Send delete request to backend
             try {
                 console.log(TAG, 'Sending delete request to API');
-                const response = await fetch(`${BACKEND_URL}/api/chat/${tripPlanId}`, {
+                const response = await fetch(API_URLS.DELETE_CHAT(tripPlanId), {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // Add authentication headers if needed
-                    },
+                    headers: DEFAULT_HEADERS,
                 });
                 
                 console.log(TAG, 'Delete API response status:', response.status, response.statusText);
@@ -397,10 +371,10 @@ export default function HistoryScreen() {
                 if (!response.ok) {
                     throw new Error(`Failed to delete from server: ${response.status} ${response.statusText}`);
                 }
-                // Otherwise, log success message
                 console.log(TAG, 'Trip plan deleted from server successfully');
             } catch (apiError) {
-                console.warn(TAG, 'Server deletion failed, only local deletion succeeded:', apiError);
+                console.warn(TAG, 'Server deletion failed, but local deletion succeeded:', apiError);
+                // This is okay - the item is deleted locally and will be handled on next sync
             }
         } catch (error) {
             console.error(TAG, 'Error during trip plan deletion:', error);
