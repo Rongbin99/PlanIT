@@ -771,8 +771,8 @@ export default function HomeScreen() {
             <MapView
                 style={styles.map}
                 initialRegion={{
-                    latitude: MAP_CONFIG.INITIAL_REGION.latitude,
-                    longitude: MAP_CONFIG.INITIAL_REGION.longitude,
+                    latitude: MAP_CONFIG.DEFAULT_REGION.latitude,
+                    longitude: MAP_CONFIG.DEFAULT_REGION.longitude,
                     latitudeDelta: MAP_CONFIG.LAT_DELTA,
                     longitudeDelta: MAP_CONFIG.LONG_DELTA,
                 }}
