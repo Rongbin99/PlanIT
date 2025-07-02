@@ -169,6 +169,25 @@ export const LAYOUT = {
 } as const;
 
 // ========================================
+// PROFILE LAYOUT CONFIGURATIONS
+// ========================================
+
+/**
+ * Profile-specific layout constants using design tokens
+ */
+export const PROFILE_LAYOUT = {
+    bannerHeight: 250, // Banner height
+    profileImageSize: SPACING.xxxl * 3, // 120px equivalent (40 * 3)
+    profileImageRadius: SPACING.xxxl * 1.5, // 60px equivalent (40 * 1.5)
+    editIconSize: SPACING.xl + SPACING.xs, // 30px (20 + 4 + 6)
+    editIconRadius: SPACING.md + SPACING.xs - 1, // 15px (12 + 4 - 1)
+    profileOverlayOffset: -SPACING.xxxl - SPACING.xl, // -60px (-40 - 20)
+    statsContainerRadius: SPACING.xl,
+    statDividerHeight: SPACING.xl + SPACING.xs + SPACING.xs + 2, // 30px
+    settingsTopMargin: SPACING.xxxl * 2, // 80px (40 * 2)
+} as const;
+
+// ========================================
 // TIME CONSTANTS
 // ========================================
 
@@ -197,4 +216,5 @@ export type SpacingKeys = keyof typeof SPACING;
 export type RadiusKeys = keyof typeof RADIUS;
 export type IconSizeKeys = keyof typeof ICON_SIZES;
 export type ShadowKeys = keyof typeof SHADOWS;
-export type LayoutKeys = keyof typeof LAYOUT; 
+export type LayoutKeys = keyof typeof LAYOUT;
+export type ProfileLayoutKeys = keyof typeof PROFILE_LAYOUT; 
