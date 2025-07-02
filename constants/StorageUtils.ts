@@ -48,6 +48,27 @@ export interface StoredChatData {
     }>;
     createdAt: string;
     updatedAt: string;
+    image?: ImageData;
+}
+
+/**
+ * Image data structure matching API response
+ */
+export interface ImageData {
+    id: string;
+    url: string;
+    thumbnail: string;
+    alt_description: string;
+    photographer: {
+        name: string;
+        username: string;
+        profile_url: string;
+    };
+    unsplash_url: string;
+    location: string;
+    original_location: string;
+    search_query: string;
+    cached_at: string;
 }
 
 /**
@@ -59,6 +80,7 @@ export interface TripPlanHistoryItem {
     location: string;
     lastUpdated: string;
     searchData?: Record<string, any>;
+    image?: ImageData;
 }
 
 // ========================================
@@ -131,6 +153,7 @@ export const convertChatsToHistoryItems = (chats: StoredChatData[]): TripPlanHis
         location: chat.location,
         lastUpdated: chat.updatedAt || chat.createdAt,
         searchData: chat.searchData,
+        image: chat.image,
     }));
 };
 
