@@ -3,7 +3,12 @@
  * 
  * Displays a chat interface with AI responses based on user search queries and filters.
  * Features loading states, message bubbles, error handling, and automatic chat persistence.
- * Integrates with backend API for AI response generation and chat storage.
+ * 
+ * UUID Synchronization:
+ * - POST to /api/plan generates AI response and creates chat on backend
+ * - Backend returns proper UUID in response.chatId
+ * - Frontend uses backend UUID for all chat data and message IDs
+ * - Chat saved to local storage for offline access with backend UUID
  * 
  * @author Rongbin Gu (@rongbin99)
  */
@@ -256,28 +261,50 @@ export default function ChatScreen() {
 
             // Get AI response from backend
             console.log(TAG, 'Fetching AI response from backend');
-            const aiResponse = await fetchAIResponse(searchData, userMessage);
-            console.log(TAG, 'AI response received:', aiResponse);
+            const { message: aiResponse, chatId: backendChatId } = await fetchAIResponse(searchData, userMessage);
+            console.log(TAG, 'AI response received:', { aiResponse, backendChatId });
             
-            // Create complete chat data
-            console.log(TAG, 'Creating complete chat data structure');
-            const newChatData = createChatData(searchData, userMessage, aiResponse);
+            // Update user message ID to reference backend chat ID
+            const updatedUserMessage = {
+                ...userMessage,
+                id: `user_${backendChatId}_0`
+            };
+            
+            // Create complete chat data with backend chat ID
+            console.log(TAG, 'Creating complete chat data structure with backend UUID');
+            const newChatData = createChatDataWithBackendId(searchData, updatedUserMessage, aiResponse, backendChatId);
             console.log(TAG, 'Chat data created:', {
                 id: newChatData.id,
                 title: newChatData.title,
                 messageCount: newChatData.messages.length
             });
             
-            // Update state
-            setMessages([userMessage, aiResponse]);
+            // Save to local storage for offline access (chat already saved on backend)
+            console.log(TAG, 'Saving chat to local storage for offline access');
+            const storedChatData: StoredChatData = {
+                id: newChatData.id,
+                title: newChatData.title,
+                location: newChatData.location,
+                searchData: newChatData.searchData,
+                messages: newChatData.messages,
+                createdAt: newChatData.createdAt,
+                updatedAt: newChatData.updatedAt,
+            };
+            await saveToStorage(storedChatData);
+            
+            // Update state with backend UUID
+            setMessages([updatedUserMessage, aiResponse]);
             setChatData(newChatData);
             
-            // Persist chat for history
-            console.log(TAG, 'Saving chat to storage for history');
-            await saveChatToStorage(newChatData);
+            console.log(TAG, 'Chat initialization completed successfully with backend UUID:', {
+                chatId: backendChatId,
+                title: newChatData.title,
+                messageCount: newChatData.messages.length,
+                userMessageId: updatedUserMessage.id,
+                aiMessageId: aiResponse.id
+            });
             
             setIsLoading(false);
-            console.log(TAG, 'Chat initialization completed successfully');
             
             // Auto-scroll to bottom after content loads
             setTimeout(() => {
@@ -313,19 +340,21 @@ export default function ChatScreen() {
     };
 
     /**
-     * Creates complete chat data object
+     * Creates complete chat data object with backend chat ID
      * @param searchData - Original search parameters
      * @param userMessage - User's initial message
      * @param aiMessage - AI's response message
+     * @param backendChatId - Chat ID from backend
      * @returns Complete chat data structure
      */
-    const createChatData = (
+    const createChatDataWithBackendId = (
         searchData: SearchData, 
         userMessage: ChatMessage, 
-        aiMessage: ChatMessage
+        aiMessage: ChatMessage,
+        backendChatId: string
     ): ChatData => {
         const chatData = {
-            id: `chat_${Date.now()}`,
+            id: backendChatId,
             title: generateChatTitle(searchData.searchQuery),
             location: extractLocationFromSearchData(searchData),
             messages: [userMessage, aiMessage],
@@ -334,30 +363,45 @@ export default function ChatScreen() {
             updatedAt: new Date().toISOString(),
         };
         
-        console.log(TAG, 'Created chat data structure:', {
+        console.log(TAG, 'Created chat data structure with backend UUID:', {
             id: chatData.id,
             title: chatData.title,
             location: chatData.location,
             messageCount: chatData.messages.length,
-            searchQuery: searchData.searchQuery
+            searchQuery: searchData.searchQuery,
+            backendProvided: true
         });
         
         return chatData;
     };
 
     /**
-     * Generates a readable title from search query
+     * Generates a readable title from search query with proper capitalization
      * @param searchQuery - User's search input
-     * @returns Formatted title for chat
+     * @returns Formatted title for chat with first word capitalized
      */
     const generateChatTitle = (searchQuery: string): string => {
         const maxLength = 50;
-        const title = searchQuery.length > maxLength 
-            ? `${searchQuery.substring(0, maxLength)}...`
-            : searchQuery;
+        
+        // Trim and handle empty queries
+        const trimmedQuery = searchQuery.trim();
+        if (!trimmedQuery) {
+            return 'Untitled Chat';
+        }
+        
+        // Truncate if necessary
+        const truncatedQuery = trimmedQuery.length > maxLength 
+            ? `${trimmedQuery.substring(0, maxLength)}...`
+            : trimmedQuery;
+        
+        // Capitalize the first word
+        const capitalizedTitle = truncatedQuery.charAt(0).toUpperCase() + truncatedQuery.slice(1);
             
-        console.log(TAG, 'Generated chat title:', title);
-        return title;
+        console.log(TAG, 'Generated chat title:', {
+            original: searchQuery,
+            capitalized: capitalizedTitle
+        });
+        return capitalizedTitle;
     };
 
     // ========================================
@@ -368,9 +412,9 @@ export default function ChatScreen() {
      * Fetches AI response from backend API
      * @param searchData - Search parameters and filters
      * @param userMessage - User's message content
-     * @returns AI response message
+     * @returns AI response message and backend chat ID
      */
-    const fetchAIResponse = async (searchData: SearchData, userMessage: ChatMessage): Promise<ChatMessage> => {
+    const fetchAIResponse = async (searchData: SearchData, userMessage: ChatMessage): Promise<{ message: ChatMessage; chatId: string }> => {
         console.log(TAG, 'Starting API request to /api/plan');
         console.log(TAG, 'Request payload:', {
             searchData: {
@@ -410,71 +454,22 @@ export default function ChatScreen() {
         });
 
         const aiMessage = {
-            id: `ai_${Date.now()}`,
+            id: `ai_${result.chatId}_1`, // Use backend chatId for message ID
             type: 'ai' as const,
             content: result.response || 'I found some great options for you!',
             timestamp: new Date().toISOString(),
         };
 
-        console.log(TAG, 'Created AI message:', aiMessage);
-        return aiMessage;
+        console.log(TAG, 'Created AI message with backend chatId:', {
+            messageId: aiMessage.id,
+            chatId: result.chatId
+        });
+        return { message: aiMessage, chatId: result.chatId };
     };
 
     // ========================================
     // DATA PERSISTENCE
     // ========================================
-    
-    /**
-     * Saves chat data to both backend and local storage for offline support
-     * @param chat - Complete chat data to save
-     */
-    const saveChatToStorage = async (chat: ChatData): Promise<void> => {
-        // Convert chat data to storage format
-        const storedChat: StoredChatData = {
-            id: chat.id,
-            title: chat.title,
-            location: chat.location,
-            searchData: chat.searchData,
-            messages: chat.messages,
-            createdAt: chat.createdAt,
-            updatedAt: chat.updatedAt,
-        };
-        
-        // Always save to local storage first for offline functionality
-        await saveToStorage(storedChat);
-        
-        try {
-            console.log(TAG, 'Attempting to save chat to backend');
-            
-            console.log(TAG, 'Sending chat to backend:', {
-                id: storedChat.id,
-                title: storedChat.title,
-                location: storedChat.location,
-                messageCount: storedChat.messages.length,
-            });
-            
-            // Send to backend API
-            const response = await fetch(API_URLS.SAVE_CHAT, {
-                method: 'POST',
-                headers: DEFAULT_HEADERS,
-                body: JSON.stringify(storedChat),
-            });
-            
-            console.log(TAG, 'Save chat API response status:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`Failed to save chat: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            console.log(TAG, 'Chat saved to backend successfully:', result);
-            
-        } catch (error) {
-            console.error(TAG, 'Error saving chat to backend:', error);
-            console.log(TAG, 'Chat is still saved locally for offline access');
-            // Non-critical error - chat is already saved locally
-        }
-    };
 
     /**
      * Extracts location from search data during chat creation with enhanced pattern matching
