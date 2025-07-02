@@ -17,15 +17,19 @@ import { router } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
 // ========================================
 
+const TAG = "[HomeScreen]";
+const MAP_ANIMATION_DURATION = 1000;
+
 // Map configuration
 const MAP_CONFIG = {
-    LAT_DELTA: 0.015,
-    LONG_DELTA: 0.012,
+    LAT_DELTA: 0.02,
+    LONG_DELTA: 0.015,
     // Fallback to Toronto location if user location is not available
     DEFAULT_REGION: {
         latitude: 43.6532,
@@ -33,25 +37,19 @@ const MAP_CONFIG = {
     },
 } as const;
 
-// UI Constants for consistent styling and easy maintenance
-const ICON_SIZES = {
-    filter: 28,
-    send: 32,
-    checkbox: 24,
-    radio: 24,
-    toggle: 32,
+// UI Constants for home screen specific values
+const HOME_ICON_SIZES = {
+    filter: ICON_SIZES.xxl + 4, // 28 (32 + 4)
+    send: ICON_SIZES.xxl,       // 32
+    checkbox: ICON_SIZES.xl,    // 24
+    radio: ICON_SIZES.xl,       // 24
+    toggle: ICON_SIZES.xxl,     // 32
 } as const;
 
-const COLORS = {
-    primary: '#4B6CB7',
-    secondary: '#888',
-    text: '#333',
-    subText: '#555',
-    placeholder: '#666',
-    border: '#E0E0E0',
-    background: 'white',
-    shadow: '#000',
+const HOME_COLORS = {
+    placeholder: COLORS.lightText,
     loading: '#CCE5FF',
+    subText: '#555',
 } as const;
 
 const ANIMATIONS = {
@@ -62,20 +60,20 @@ const ANIMATIONS = {
     placeholderOffset: 30,
 } as const;
 
-const SPACING = {
+const HOME_SPACING = {
     searchTop: 80,
-    searchHorizontal: 20,
+    searchHorizontal: SPACING.xl,          // 20
     borderRadius: 30,
-    dropdownRadius: 20,
-    dropdownMarginTop: 10,
-    iconPadding: 10,
-    contentPadding: 20,
-    sectionMargin: 20,
-    optionPaddingVertical: 8,
-    textMarginLeft: 12,
-    subSectionMarginTop: 10,
-    subSectionMarginLeft: 20,
-    subSectionPaddingLeft: 15,
+    dropdownRadius: RADIUS.xl,             // 16
+    dropdownMarginTop: SPACING.sm,         // 8
+    iconPadding: SPACING.sm,               // 8
+    contentPadding: SPACING.xl,            // 20
+    sectionMargin: SPACING.xl,             // 20
+    optionPaddingVertical: SPACING.sm,     // 8
+    textMarginLeft: SPACING.md,            // 12
+    subSectionMarginTop: SPACING.sm,       // 8
+    subSectionMarginLeft: SPACING.xl,      // 20
+    subSectionPaddingLeft: SPACING.lg,     // 16
 } as const;
 
 // Layout constants
@@ -146,6 +144,10 @@ export default function HomeScreen() {
     const glowAnim = useRef(new Animated.Value(0)).current;
     const placeholderAnim = useRef(new Animated.Value(0)).current;
     const dropdownAnim = useRef(new Animated.Value(0)).current;
+    const locationLoadingAnim = useRef(new Animated.Value(0)).current;
+    
+    // Map reference for programmatic control
+    const mapRef = useRef<MapView>(null);
     
     // UI states
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -158,6 +160,8 @@ export default function HomeScreen() {
     // Location states
     const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
     const [locationPermission, setLocationPermission] = useState<Location.LocationPermissionResponse | null>(null);
+    const [isLocationLoading, setIsLocationLoading] = useState(true);
+    const [hasUserLocation, setHasUserLocation] = useState(false);
     const [mapRegion, setMapRegion] = useState({
         latitude: MAP_CONFIG.DEFAULT_REGION.latitude as number,
         longitude: MAP_CONFIG.DEFAULT_REGION.longitude as number,
@@ -187,7 +191,7 @@ export default function HomeScreen() {
      * Creates an engaging visual effect that cycles through colors
      */
     useEffect(() => {
-        console.log('[HomeScreen] Initializing glow animation');
+        console.log(TAG, 'Initializing glow animation');
         
         const startGlowAnimation = () => {
             Animated.loop(
@@ -214,13 +218,13 @@ export default function HomeScreen() {
      * Only animates when input is empty and not focused
      */
     useEffect(() => {
-        console.log('[HomeScreen] Setting up placeholder animation with interval:', ANIMATIONS.placeholderInterval);
+        console.log(TAG, 'Setting up placeholder animation with interval:', ANIMATIONS.placeholderInterval);
         
         const startPlaceholderRotation = () => {
             const interval = setInterval(() => {
                 // Only animate if input is empty and not focused
                 if (inputValue.length === 0 && !isSearchFocused) {
-                    console.log('[HomeScreen] Animating placeholder to index:', (placeholderIndex + 1) % SEARCH_PLACEHOLDER_OPTIONS.length);
+                    console.log(TAG, 'Animating placeholder to index:', (placeholderIndex + 1) % SEARCH_PLACEHOLDER_OPTIONS.length);
                     
                     // Animate out (slide up)
                     Animated.timing(placeholderAnim, {
@@ -257,7 +261,7 @@ export default function HomeScreen() {
      * Smooth expand/collapse animation for filter dropdown
      */
     useEffect(() => {
-        console.log('[HomeScreen] Animating dropdown visibility:', isDropdownVisible);
+        console.log(TAG, 'Animating dropdown visibility:', isDropdownVisible);
         
         Animated.timing(dropdownAnim, {
             toValue: isDropdownVisible ? 1 : 0,
@@ -267,21 +271,58 @@ export default function HomeScreen() {
     }, [isDropdownVisible, dropdownAnim]);
 
     /**
+     * Location loading animation
+     * Continuous rotation animation for location loading indicator
+     */
+    useEffect(() => {
+        if (isLocationLoading) {
+            console.log(TAG, 'Starting location loading animation');
+            
+            // Reset animation value and start rotation
+            locationLoadingAnim.setValue(0);
+            
+            // Create looping rotation animation
+            const rotationAnimation = Animated.loop(
+                Animated.timing(locationLoadingAnim, {
+                    toValue: 1,
+                    duration: 1000, // 1 second per rotation
+                    useNativeDriver: true,
+                })
+            );
+            
+            rotationAnimation.start();
+            
+            // Return cleanup function
+            return () => {
+                console.log(TAG, 'Stopping location loading animation');
+                rotationAnimation.stop();
+                locationLoadingAnim.setValue(0);
+            };
+        } else {
+            // Reset animation when not loading
+            locationLoadingAnim.setValue(0);
+        }
+    }, [isLocationLoading, locationLoadingAnim]);
+
+    /**
      * Location permission and GPS detection
      * Requests location permission and gets user's current location
      */
     useEffect(() => {
-        console.log('[HomeScreen] Setting up location services');
+        console.log(TAG, 'Setting up location services');
         
         const setupLocation = async () => {
             try {
+                setIsLocationLoading(true);
+                
                 // Request location permission
-                console.log('[HomeScreen] Requesting location permission');
+                console.log(TAG, 'Requesting location permission');
                 const permission = await Location.requestForegroundPermissionsAsync();
                 setLocationPermission(permission);
                 
                 if (permission.status !== 'granted') {
-                    console.warn('[HomeScreen] Location permission denied');
+                    console.warn(TAG, 'Location permission denied');
+                    setIsLocationLoading(false);
                     Alert.alert(
                         'Location Permission',
                         'Location access is needed to show your current position on the map. Using default location (Toronto).',
@@ -291,38 +332,121 @@ export default function HomeScreen() {
                 }
 
                 // Get current location
-                console.log('[HomeScreen] Getting current location');
+                console.log(TAG, 'Getting current location');
                 const location = await Location.getCurrentPositionAsync({
                     accuracy: Location.Accuracy.Balanced,
                 });
                 
-                console.log('[HomeScreen] Location acquired:', {
+                console.log(TAG, 'Location acquired:', {
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
+                    accuracy: location.coords.accuracy,
                 });
                 
                 setUserLocation(location);
+                setHasUserLocation(true);
                 
                 // Update map region to user's location
-                setMapRegion({
+                const newRegion = {
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
                     latitudeDelta: MAP_CONFIG.LAT_DELTA,
                     longitudeDelta: MAP_CONFIG.LONG_DELTA,
-                });
+                };
+                
+                console.log(TAG, 'Updating map region to user location:', newRegion);
+                setMapRegion(newRegion);
+                
+                // Animate map to user's location
+                if (mapRef.current) {
+                    console.log(TAG, 'Animating map to user location');
+                    mapRef.current.animateToRegion(newRegion, MAP_ANIMATION_DURATION);
+                }
                 
             } catch (error) {
-                console.error('[HomeScreen] Location error:', error);
+                console.error(TAG, 'Location error:', error);
+                setHasUserLocation(false);
                 Alert.alert(
                     'Location Error',
                     'Unable to get your current location. Using default location (Toronto).',
                     [{ text: 'OK' }]
                 );
+            } finally {
+                setIsLocationLoading(false);
             }
         };
 
         setupLocation();
     }, []);
+
+    // ========================================
+    // LOCATION HELPERS
+    // ========================================
+    
+    /**
+     * Refreshes user location and updates map
+     */
+    const refreshLocation = async (): Promise<void> => {
+        console.log(TAG, 'Refreshing user location');
+        
+        if (!locationPermission || locationPermission.status !== 'granted') {
+            console.warn(TAG, 'Location permission not granted, requesting again');
+            const permission = await Location.requestForegroundPermissionsAsync();
+            setLocationPermission(permission);
+            
+            if (permission.status !== 'granted') {
+                Alert.alert(
+                    'Permission Required',
+                    'Location permission is needed to show your current position.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+        }
+
+        try {
+            setIsLocationLoading(true);
+            console.log(TAG, 'Getting updated location');
+            
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.High,
+            });
+            
+            console.log(TAG, 'Location refreshed:', {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                accuracy: location.coords.accuracy,
+            });
+            
+            setUserLocation(location);
+            setHasUserLocation(true);
+            
+            const newRegion = {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                latitudeDelta: MAP_CONFIG.LAT_DELTA,
+                longitudeDelta: MAP_CONFIG.LONG_DELTA,
+            };
+            
+            setMapRegion(newRegion);
+            
+            // Animate to new location
+            if (mapRef.current) {
+                console.log(TAG, 'Animating map to refreshed location');
+                mapRef.current.animateToRegion(newRegion, MAP_ANIMATION_DURATION);
+            }
+            
+        } catch (error) {
+            console.error(TAG, 'Error refreshing location:', error);
+            Alert.alert(
+                'Location Error',
+                'Unable to get your current location. Please try again.',
+                [{ text: 'OK' }]
+            );
+        } finally {
+            setIsLocationLoading(false);
+        }
+    };
 
     // ========================================
     // EVENT HANDLERS
@@ -332,7 +456,7 @@ export default function HomeScreen() {
      * Handles search box press - ensures dropdown stays open
      */
     const handleSearchBoxPress = (): void => {
-        console.log('[HomeScreen] Search box pressed, opening dropdown');
+        console.log(TAG, 'Search box pressed, opening dropdown');
         setIsDropdownVisible(true);
         setIsSearchFocused(true);
     };
@@ -342,7 +466,7 @@ export default function HomeScreen() {
      */
     const toggleDropdown = (): void => {
         const newState = !isDropdownVisible;
-        console.log('[HomeScreen] Toggling dropdown from', isDropdownVisible, 'to', newState);
+        console.log(TAG, 'Toggling dropdown from', isDropdownVisible, 'to', newState);
         setIsDropdownVisible(newState);
     };
 
@@ -351,13 +475,13 @@ export default function HomeScreen() {
      * @param time - The time period to toggle
      */
     const toggleTimeOfDay = (time: keyof TimeOfDay): void => {
-        console.log('[HomeScreen] Toggling time of day:', time);
+        console.log(TAG, 'Toggling time of day:', time);
         setTimeOfDay(prev => {
             const newState = {
                 ...prev,
                 [time]: !prev[time]
             };
-            console.log('[HomeScreen] New time of day state:', newState);
+            console.log(TAG, 'New time of day state:', newState);
             return newState;
         });
     };
@@ -367,7 +491,7 @@ export default function HomeScreen() {
      * @param value - The numeric price range value (1-4)
      */
     const handlePriceRangeChange = (value: PriceRangeValue): void => {
-        console.log('[HomeScreen] Price range changed from', priceRange, 'to', value, `(${PRICE_RANGE_MAP[value]})`);
+        console.log(TAG, 'Price range changed from', priceRange, 'to', value, `(${PRICE_RANGE_MAP[value]})`);
         setPriceRange(value);
     };
 
@@ -375,7 +499,7 @@ export default function HomeScreen() {
      * Resets all filters to their default values
      */
     const resetFilters = (): void => {
-        console.log('[HomeScreen] Resetting all filters to defaults');
+        console.log(TAG, 'Resetting all filters to defaults');
         setTimeOfDay({ morning: false, afternoon: false, evening: false });
         setEnvironment('indoor');
         setPlanTransit(false);
@@ -389,7 +513,7 @@ export default function HomeScreen() {
      * Resets the search form to initial state
      */
     const resetSearchForm = (): void => {
-        console.log('[HomeScreen] Resetting search form');
+        console.log(TAG, 'Resetting search form');
         setInputValue("");
         setIsDropdownVisible(false);
         setIsSearchFocused(false);
@@ -423,7 +547,7 @@ export default function HomeScreen() {
             timestamp: new Date().toISOString()
         };
 
-        console.log('[HomeScreen] Collected filter data:', {
+        console.log(TAG, 'Collected filter data:', {
             ...searchData,
             filters: {
                 ...searchData.filters,
@@ -439,19 +563,19 @@ export default function HomeScreen() {
      * Validates input, collects data, and navigates to chat
      */
     const handleSendToBackend = async (): Promise<void> => {
-        console.log('[HomeScreen] Send button pressed, validating and collecting data');
+        console.log(TAG, 'Send button pressed, validating and collecting data');
         
         const searchData = collectFilterData();
         
         // Input validation
         if (!searchData.searchQuery) {
-            console.warn('[HomeScreen] Validation failed: empty search query');
+            console.warn(TAG, 'Validation failed: empty search query');
             Alert.alert('Error', 'Please enter a search query');
             return;
         }
 
         try {
-            console.log('[HomeScreen] Navigating to chat screen with search data');
+            console.log(TAG, 'Navigating to chat screen with search data');
             
             // Navigate to chat screen with search data
             router.push({
@@ -461,12 +585,12 @@ export default function HomeScreen() {
                 }
             });
 
-            console.log('[HomeScreen] Navigation successful, resetting form');
+            console.log(TAG, 'Navigation successful, resetting form');
             
             // Reset form after successful navigation
             resetSearchForm();
         } catch (error) {
-            console.error('[HomeScreen] Navigation error:', error);
+            console.error(TAG, 'Navigation error:', error);
             Alert.alert('Error', 'Failed to navigate to chat. Please try again.');
         }
     };
@@ -483,8 +607,8 @@ export default function HomeScreen() {
     const renderCheckbox = (isChecked: boolean): React.ReactElement => (
         <MaterialCommunityIcons 
             name={isChecked ? "checkbox-marked" : "checkbox-blank-outline"} 
-            size={ICON_SIZES.checkbox} 
-            color={isChecked ? COLORS.primary : COLORS.placeholder} 
+            size={HOME_ICON_SIZES.checkbox} 
+            color={isChecked ? COLORS.primary : HOME_COLORS.placeholder} 
         />
     );
 
@@ -496,8 +620,8 @@ export default function HomeScreen() {
     const renderRadio = (isSelected: boolean): React.ReactElement => (
         <MaterialCommunityIcons 
             name={isSelected ? "radiobox-marked" : "radiobox-blank"} 
-            size={ICON_SIZES.radio} 
-            color={isSelected ? COLORS.primary : COLORS.placeholder} 
+            size={HOME_ICON_SIZES.radio} 
+            color={isSelected ? COLORS.primary : HOME_COLORS.placeholder} 
         />
     );
 
@@ -509,8 +633,8 @@ export default function HomeScreen() {
     const renderToggle = (isOn: boolean): React.ReactElement => (
         <MaterialCommunityIcons 
             name={isOn ? "toggle-switch" : "toggle-switch-off"} 
-            size={ICON_SIZES.toggle} 
-            color={isOn ? COLORS.primary : COLORS.placeholder} 
+            size={HOME_ICON_SIZES.toggle} 
+            color={isOn ? COLORS.primary : HOME_COLORS.placeholder} 
         />
     );
 
@@ -533,12 +657,23 @@ export default function HomeScreen() {
      * Determines send button color based on input state
      */
     const sendButtonColor = isLoading 
-        ? COLORS.loading 
-        : (inputValue.trim() ? COLORS.primary : COLORS.placeholder);
+        ? HOME_COLORS.loading 
+        : (inputValue.trim() ? COLORS.primary : HOME_COLORS.placeholder);
 
     // ========================================
     // RENDER
     // ========================================
+    
+    // Log current state for debugging
+    console.debug(TAG, 'Rendering HomeScreen with location state:', {
+        hasUserLocation,
+        isLocationLoading,
+        mapRegion: {
+            lat: mapRegion.latitude.toFixed(4),
+            lng: mapRegion.longitude.toFixed(4)
+        }
+    });
+
     return (
         <View style={styles.container}>
             {/* Search Container */}
@@ -556,19 +691,19 @@ export default function HomeScreen() {
                                 style={styles.searchInput}
                                 value={inputValue}
                                 onChangeText={(text) => {
-                                    console.log('[HomeScreen] Search input changed:', text);
+                                    console.log(TAG, 'Search input changed:', text);
                                     setInputValue(text);
                                 }}
                                 placeholder=" "
-                                placeholderTextColor={COLORS.placeholder}
+                                placeholderTextColor={HOME_COLORS.placeholder}
                                 editable={!isLoading}
                                 onFocus={() => {
-                                    console.log('[HomeScreen] Search input focused');
+                                    console.log(TAG, 'Search input focused');
                                     setIsDropdownVisible(true);
                                     setIsSearchFocused(true);
                                 }}
                                 onBlur={() => {
-                                    console.log('[HomeScreen] Search input blurred');
+                                    console.log(TAG, 'Search input blurred');
                                     setIsSearchFocused(false);
                                 }}
                                 returnKeyType="search"
@@ -604,8 +739,8 @@ export default function HomeScreen() {
                         >
                             <MaterialCommunityIcons 
                                 name="filter-outline" 
-                                size={ICON_SIZES.filter} 
-                                color={isLoading ? COLORS.loading : COLORS.secondary} 
+                                size={HOME_ICON_SIZES.filter} 
+                                color={isLoading ? HOME_COLORS.loading : COLORS.secondary} 
                             />
                         </TouchableOpacity>
                         
@@ -618,7 +753,7 @@ export default function HomeScreen() {
                         >
                             <MaterialCommunityIcons 
                                 name={isLoading ? "loading" : "send"} 
-                                size={ICON_SIZES.send} 
+                                size={HOME_ICON_SIZES.send} 
                                 color={sendButtonColor} 
                             />
                         </TouchableOpacity>
@@ -668,7 +803,7 @@ export default function HomeScreen() {
                                     key={env}
                                     style={styles.filterOption} 
                                     onPress={() => {
-                                        console.log('[HomeScreen] Environment changed to:', env);
+                                        console.log(TAG, 'Environment changed to:', env);
                                         setEnvironment(env);
                                     }}
                                 >
@@ -685,7 +820,7 @@ export default function HomeScreen() {
                             <TouchableOpacity 
                                 style={styles.filterOption} 
                                 onPress={() => {
-                                    console.log('[HomeScreen] Plan Transit toggled to:', !planTransit);
+                                    console.log(TAG, 'Plan Transit toggled to:', !planTransit);
                                     setPlanTransit(!planTransit);
                                 }}
                             >
@@ -702,7 +837,7 @@ export default function HomeScreen() {
                                     key={size}
                                     style={styles.filterOption} 
                                     onPress={() => {
-                                        console.log('[HomeScreen] Group size changed to:', size);
+                                        console.log(TAG, 'Group size changed to:', size);
                                         setGroupSize(size);
                                     }}
                                 >
@@ -719,7 +854,7 @@ export default function HomeScreen() {
                             <TouchableOpacity 
                                 style={styles.filterOption} 
                                 onPress={() => {
-                                    console.log('[HomeScreen] Plan Food toggled to:', !planFood);
+                                    console.log(TAG, 'Plan Food toggled to:', !planFood);
                                     setPlanFood(!planFood);
                                 }}
                             >
@@ -754,7 +889,7 @@ export default function HomeScreen() {
                                     style={styles.filterOption} 
                                     onPress={() => {
                                         const newOption = option.toLowerCase() as SpecialOption;
-                                        console.log('[HomeScreen] Special option changed to:', newOption);
+                                        console.log(TAG, 'Special option changed to:', newOption);
                                         setSpecialOption(newOption);
                                     }}
                                 >
@@ -769,6 +904,7 @@ export default function HomeScreen() {
             
             {/* Map View */}
             <MapView
+                ref={mapRef}
                 style={styles.map}
                 initialRegion={{
                     latitude: MAP_CONFIG.DEFAULT_REGION.latitude,
@@ -776,7 +912,46 @@ export default function HomeScreen() {
                     latitudeDelta: MAP_CONFIG.LAT_DELTA,
                     longitudeDelta: MAP_CONFIG.LONG_DELTA,
                 }}
+                region={mapRegion}
+                showsUserLocation={hasUserLocation}
+                showsMyLocationButton={false}
+                followsUserLocation={false}
+                onRegionChangeComplete={(region) => {
+                    console.log(TAG, 'Map region changed:', region);
+                }}
             />
+            
+            {/* Location Controls */}
+            <View style={styles.locationControls}>
+                <TouchableOpacity 
+                    style={[styles.locationButton, isLocationLoading && styles.locationButtonLoading]}
+                    onPress={refreshLocation}
+                    disabled={isLocationLoading}
+                    accessibilityLabel="Refresh location"
+                    accessibilityRole="button"
+                >
+                    <Animated.View
+                        style={{
+                            transform: [
+                                {
+                                    rotate: isLocationLoading 
+                                        ? locationLoadingAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: ['0deg', '360deg'],
+                                        })
+                                        : '0deg',
+                                },
+                            ],
+                        }}
+                    >
+                        <MaterialCommunityIcons 
+                            name={isLocationLoading ? "loading" : hasUserLocation ? "crosshairs-gps" : "crosshairs"} 
+                            size={HOME_ICON_SIZES.filter} 
+                            color={isLocationLoading ? COLORS.primary : hasUserLocation ? COLORS.primary : COLORS.secondary} 
+                        />
+                    </Animated.View>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }
@@ -798,19 +973,19 @@ const styles = StyleSheet.create({
     // Search Container
     searchContainer: {
         position: 'absolute',
-        top: SPACING.searchTop,
-        left: SPACING.searchHorizontal,
-        right: SPACING.searchHorizontal,
+        top: HOME_SPACING.searchTop,
+        left: HOME_SPACING.searchHorizontal,
+        right: HOME_SPACING.searchHorizontal,
         zIndex: 1,
     },
     searchInputContainer: {
-        backgroundColor: COLORS.background,
-        borderRadius: SPACING.borderRadius,
+        backgroundColor: COLORS.white,
+        borderRadius: HOME_SPACING.borderRadius,
     },
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginEnd: SPACING.iconPadding,
+        marginEnd: HOME_SPACING.iconPadding,
     },
     
     // Search Input
@@ -832,72 +1007,88 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 25,
         right: 0,
-        color: COLORS.placeholder,
-        fontSize: 14,
+        color: HOME_COLORS.placeholder,
+        fontSize: TYPOGRAPHY.fontSize.sm,
         top: -10,
     },
     
     // Buttons
     iconButton: {
-        paddingHorizontal: SPACING.iconPadding,
-        paddingVertical: SPACING.iconPadding,
+        paddingHorizontal: HOME_SPACING.iconPadding,
+        paddingVertical: HOME_SPACING.iconPadding,
     },
     
     // Dropdown
     dropdown: {
-        backgroundColor: COLORS.background,
-        borderRadius: SPACING.dropdownRadius,
-        marginTop: SPACING.dropdownMarginTop,
-        shadowColor: COLORS.shadow,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        backgroundColor: COLORS.white,
+        borderRadius: HOME_SPACING.dropdownRadius,
+        marginTop: HOME_SPACING.dropdownMarginTop,
+        ...SHADOWS.card,
         overflow: 'hidden',
     },
     dropdownContent: {
-        padding: SPACING.contentPadding,
+        padding: HOME_SPACING.contentPadding,
     },
     dropdownScrollContent: {
-        paddingBottom: SPACING.contentPadding,
+        paddingBottom: HOME_SPACING.contentPadding,
     },
     
     // Filter Sections
     filterSection: {
-        marginBottom: SPACING.sectionMargin,
+        marginBottom: HOME_SPACING.sectionMargin,
     },
     filterTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.bold,
+        marginBottom: SPACING.sm,
         color: COLORS.text,
     },
     filterOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: SPACING.optionPaddingVertical,
+        paddingVertical: HOME_SPACING.optionPaddingVertical,
     },
     filterText: {
-        marginLeft: SPACING.textMarginLeft,
-        fontSize: 16,
+        marginLeft: HOME_SPACING.textMarginLeft,
+        fontSize: TYPOGRAPHY.fontSize.base,
         color: COLORS.text,
     },
     
     // Sub-sections
     subSection: {
-        marginTop: SPACING.subSectionMarginTop,
-        marginLeft: SPACING.subSectionMarginLeft,
-        paddingLeft: SPACING.subSectionPaddingLeft,
+        marginTop: HOME_SPACING.subSectionMarginTop,
+        marginLeft: HOME_SPACING.subSectionMarginLeft,
+        paddingLeft: HOME_SPACING.subSectionPaddingLeft,
         borderLeftWidth: 2,
         borderLeftColor: COLORS.border,
     },
     subTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 8,
-        color: COLORS.subText,
+        fontSize: TYPOGRAPHY.fontSize.base,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
+        marginBottom: SPACING.sm,
+        color: HOME_COLORS.subText,
+    },
+    
+    // Location Controls
+    locationControls: {
+        position: 'absolute',
+        bottom: 30,
+        right: 20,
+        alignItems: 'flex-end',
+        zIndex: 1,
+    },
+    locationButton: {
+        backgroundColor: COLORS.white,
+        borderRadius: 30,
+        width: 60,
+        height: 60,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...SHADOWS.button,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    locationButtonLoading: {
+        opacity: 0.7,
     },
 });
