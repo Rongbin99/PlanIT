@@ -6,7 +6,6 @@
  * Integrates with backend API for AI response generation and chat storage.
  * 
  * @author Rongbin Gu (@rongbin99)
- * @version 1.0.0
  */
 
 // ========================================
@@ -16,6 +15,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '@/constants/DesignTokens';
+import { saveChatToLocalStorage as saveToStorage, StoredChatData } from '@/constants/StorageUtils';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -37,6 +39,7 @@ interface ChatMessage {
 interface ChatData {
     id: string;
     title: string;
+    location: string;
     messages: ChatMessage[];
     searchData: SearchData;
     createdAt: string;
@@ -74,20 +77,16 @@ interface ApiResponse {
 // CONSTANTS & CONFIGURATION
 // ========================================
 
+const TAG = "[ChatScreen]";
+
 /**
- * UI color scheme for consistent styling
+ * Chat-specific constants not in design tokens
  */
-const COLORS = {
-    primary: '#4B6CB7',
-    secondary: '#888',
-    text: '#333',
-    lightText: '#666',
-    background: '#f8f9fa',
-    white: '#ffffff',
-    userBubble: '#4B6CB7',
+const CHAT_COLORS = {
+    userBubble: COLORS.primary,
     aiBubble: '#e9ecef',
-    userText: '#ffffff',
-    aiText: '#333333',
+    userText: COLORS.white,
+    aiText: COLORS.text,
 } as const;
 
 /**
@@ -99,15 +98,15 @@ const ANIMATION_CONFIG = {
 } as const;
 
 /**
- * Layout constants
+ * Chat-specific layout constants
  */
-const LAYOUT = {
+const CHAT_LAYOUT = {
     headerHeight: 60,
     statusBarPadding: 60,
-    messageBubbleRadius: 20,
-    smallBubbleRadius: 4,
-    contentPadding: 20,
-    messageMargin: 8,
+    messageBubbleRadius: RADIUS.xl,
+    smallBubbleRadius: RADIUS.sm,
+    contentPadding: SPACING.xl,
+    messageMargin: SPACING.sm,
     maxBubbleWidth: '80%',
 } as const;
 
@@ -136,6 +135,7 @@ export default function ChatScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [chatData, setChatData] = useState<ChatData | null>(null);
+    const [isInitialized, setIsInitialized] = useState(false);
     
     // Animation references
     const scrollViewRef = useRef<ScrollView>(null);
@@ -146,7 +146,7 @@ export default function ChatScreen() {
         ? JSON.parse(params.searchData as string) 
         : null;
 
-    console.log('[ChatScreen] Component initialized with params:', {
+    console.log(TAG, 'Component initialized with params:', {
         hasSearchData: !!searchData,
         chatId: params.chatId,
         existingChat: params.existingChat,
@@ -161,16 +161,24 @@ export default function ChatScreen() {
      * Initialize chat when component mounts or search data changes
      */
     useEffect(() => {
-        console.log('[ChatScreen] Effect triggered - initializing chat');
+        console.log(TAG, 'Effect triggered - initializing chat');
+        
+        // Prevent multiple initializations
+        if (isInitialized) {
+            console.log(TAG, 'Chat already initialized, skipping');
+            return;
+        }
         
         if (searchData) {
-            console.log('[ChatScreen] Found search data, starting new chat initialization');
+            console.log(TAG, 'Found search data, starting new chat initialization');
+            setIsInitialized(true);
             initializeChat();
         } else {
-            console.log('[ChatScreen] No search data found, handling missing data scenario');
+            console.log(TAG, 'No search data found, handling missing data scenario');
+            setIsInitialized(true);
             handleMissingData();
         }
-    }, [searchData]);
+    }, []);
 
     /**
      * Animated loading dots effect
@@ -178,7 +186,7 @@ export default function ChatScreen() {
      */
     useEffect(() => {
         if (isLoading) {
-            console.log('[ChatScreen] Starting loading animation');
+            console.log(TAG, 'Starting loading animation');
             
             const animation = Animated.loop(
                 Animated.sequence([
@@ -197,7 +205,7 @@ export default function ChatScreen() {
             animation.start();
 
             return () => {
-                console.log('[ChatScreen] Stopping loading animation');
+                console.log(TAG, 'Stopping loading animation');
                 animation.stop();
             };
         }
@@ -211,7 +219,7 @@ export default function ChatScreen() {
      * Handles missing search data scenario
      */
     const handleMissingData = (): void => {
-        console.warn('[ChatScreen] Missing search data - showing error alert');
+        console.warn(TAG, 'Missing search data - showing error alert');
         setIsLoading(false);
         Alert.alert(
             'Error',
@@ -220,7 +228,7 @@ export default function ChatScreen() {
                 {
                     text: 'Go Back',
                     onPress: () => {
-                        console.log('[ChatScreen] User chose to go back');
+                        console.log(TAG, 'User chose to go back');
                         router.back();
                     },
                 },
@@ -233,28 +241,28 @@ export default function ChatScreen() {
      */
     const initializeChat = async (): Promise<void> => {
         if (!searchData) {
-            console.error('[ChatScreen] No search data available for initialization');
+            console.error(TAG, 'No search data available for initialization');
             return;
         }
 
-        console.log('[ChatScreen] Starting chat initialization process');
+        console.log(TAG, 'Starting chat initialization process');
 
         try {
             // Create initial user message
-            console.log('[ChatScreen] Creating user message from search data');
+            console.log(TAG, 'Creating user message from search data');
             const userMessage = createUserMessage(searchData);
             setMessages([userMessage]);
-            console.log('[ChatScreen] User message created:', userMessage);
+            console.log(TAG, 'User message created:', userMessage);
 
             // Get AI response from backend
-            console.log('[ChatScreen] Fetching AI response from backend');
+            console.log(TAG, 'Fetching AI response from backend');
             const aiResponse = await fetchAIResponse(searchData, userMessage);
-            console.log('[ChatScreen] AI response received:', aiResponse);
+            console.log(TAG, 'AI response received:', aiResponse);
             
             // Create complete chat data
-            console.log('[ChatScreen] Creating complete chat data structure');
+            console.log(TAG, 'Creating complete chat data structure');
             const newChatData = createChatData(searchData, userMessage, aiResponse);
-            console.log('[ChatScreen] Chat data created:', {
+            console.log(TAG, 'Chat data created:', {
                 id: newChatData.id,
                 title: newChatData.title,
                 messageCount: newChatData.messages.length
@@ -265,20 +273,20 @@ export default function ChatScreen() {
             setChatData(newChatData);
             
             // Persist chat for history
-            console.log('[ChatScreen] Saving chat to storage for history');
+            console.log(TAG, 'Saving chat to storage for history');
             await saveChatToStorage(newChatData);
             
             setIsLoading(false);
-            console.log('[ChatScreen] Chat initialization completed successfully');
+            console.log(TAG, 'Chat initialization completed successfully');
             
             // Auto-scroll to bottom after content loads
             setTimeout(() => {
-                console.log('[ChatScreen] Auto-scrolling to bottom');
+                console.log(TAG, 'Auto-scrolling to bottom');
                 scrollToBottom();
             }, ANIMATION_CONFIG.scrollDelay);
 
         } catch (error) {
-            console.error('[ChatScreen] Chat initialization failed:', error);
+            console.error(TAG, 'Chat initialization failed:', error);
             handleChatError(error);
         }
     };
@@ -300,7 +308,7 @@ export default function ChatScreen() {
             timestamp: new Date().toISOString(),
         };
         
-        console.log('[ChatScreen] Created user message:', userMessage);
+        console.log(TAG, 'Created user message:', userMessage);
         return userMessage;
     };
 
@@ -319,15 +327,17 @@ export default function ChatScreen() {
         const chatData = {
             id: `chat_${Date.now()}`,
             title: generateChatTitle(searchData.searchQuery),
+            location: extractLocationFromSearchData(searchData),
             messages: [userMessage, aiMessage],
             searchData,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
         
-        console.log('[ChatScreen] Created chat data structure:', {
+        console.log(TAG, 'Created chat data structure:', {
             id: chatData.id,
             title: chatData.title,
+            location: chatData.location,
             messageCount: chatData.messages.length,
             searchQuery: searchData.searchQuery
         });
@@ -346,7 +356,7 @@ export default function ChatScreen() {
             ? `${searchQuery.substring(0, maxLength)}...`
             : searchQuery;
             
-        console.log('[ChatScreen] Generated chat title:', title);
+        console.log(TAG, 'Generated chat title:', title);
         return title;
     };
 
@@ -361,8 +371,8 @@ export default function ChatScreen() {
      * @returns AI response message
      */
     const fetchAIResponse = async (searchData: SearchData, userMessage: ChatMessage): Promise<ChatMessage> => {
-        console.log('[ChatScreen] Starting API request to /api/plan');
-        console.log('[ChatScreen] Request payload:', {
+        console.log(TAG, 'Starting API request to /api/plan');
+        console.log(TAG, 'Request payload:', {
             searchData: {
                 ...searchData,
                 filters: {
@@ -373,27 +383,25 @@ export default function ChatScreen() {
             userMessage: userMessage.content
         });
 
-        const response = await fetch('YOUR_BACKEND_URL/api/plan', {
+        const response = await fetch(API_URLS.PLAN_GENERATION, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: DEFAULT_HEADERS,
             body: JSON.stringify({
                 searchData,
                 userMessage: userMessage.content,
             }),
         });
 
-        console.log('[ChatScreen] API response status:', response.status);
+        console.log(TAG, 'API response status:', response.status);
 
         if (!response.ok) {
             const errorMessage = `HTTP error! status: ${response.status}`;
-            console.error('[ChatScreen] API request failed:', errorMessage);
+            console.error(TAG, 'API request failed:', errorMessage);
             throw new Error(errorMessage);
         }
 
         const result: ApiResponse = await response.json();
-        console.log('[ChatScreen] API response data:', {
+        console.log(TAG, 'API response data:', {
             success: result.success,
             hasResponse: !!result.response,
             chatId: result.chatId,
@@ -408,7 +416,7 @@ export default function ChatScreen() {
             timestamp: new Date().toISOString(),
         };
 
-        console.log('[ChatScreen] Created AI message:', aiMessage);
+        console.log(TAG, 'Created AI message:', aiMessage);
         return aiMessage;
     };
 
@@ -417,33 +425,248 @@ export default function ChatScreen() {
     // ========================================
     
     /**
-     * Saves chat data to local storage for history
+     * Saves chat data to both backend and local storage for offline support
      * @param chat - Complete chat data to save
      */
     const saveChatToStorage = async (chat: ChatData): Promise<void> => {
+        // Convert chat data to storage format
+        const storedChat: StoredChatData = {
+            id: chat.id,
+            title: chat.title,
+            location: chat.location,
+            searchData: chat.searchData,
+            messages: chat.messages,
+            createdAt: chat.createdAt,
+            updatedAt: chat.updatedAt,
+        };
+        
+        // Always save to local storage first for offline functionality
+        await saveToStorage(storedChat);
+        
         try {
-            console.log('[ChatScreen] Attempting to save chat to storage');
+            console.log(TAG, 'Attempting to save chat to backend');
             
-            // TODO: Implement actual storage mechanism
-            // In production, this would save to AsyncStorage or send to backend
-            console.log('[ChatScreen] Saving chat to storage:', {
-                id: chat.id,
-                title: chat.title,
-                messageCount: chat.messages.length,
-                timestamp: chat.createdAt,
+            console.log(TAG, 'Sending chat to backend:', {
+                id: storedChat.id,
+                title: storedChat.title,
+                location: storedChat.location,
+                messageCount: storedChat.messages.length,
             });
             
-            // Example AsyncStorage implementation:
-            // const existingChats = await AsyncStorage.getItem('chatHistory');
-            // const chats = existingChats ? JSON.parse(existingChats) : [];
-            // chats.unshift(chat);
-            // await AsyncStorage.setItem('chatHistory', JSON.stringify(chats));
+            // Send to backend API
+            const response = await fetch(API_URLS.SAVE_CHAT, {
+                method: 'POST',
+                headers: DEFAULT_HEADERS,
+                body: JSON.stringify(storedChat),
+            });
             
-            console.log('[ChatScreen] Chat saved to storage successfully');
+            console.log(TAG, 'Save chat API response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to save chat: ${response.status} ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log(TAG, 'Chat saved to backend successfully:', result);
+            
         } catch (error) {
-            console.error('[ChatScreen] Error saving chat to storage:', error);
-            // Non-critical error - don't show alert to user
+            console.error(TAG, 'Error saving chat to backend:', error);
+            console.log(TAG, 'Chat is still saved locally for offline access');
+            // Non-critical error - chat is already saved locally
         }
+    };
+
+    /**
+     * Extracts location from search data during chat creation with enhanced pattern matching
+     * Note: This is only used once during chat creation to populate the ChatData.location field
+     * @param searchData - Search parameters
+     * @returns Location string for display
+     */
+    const extractLocationFromSearchData = (searchData: SearchData): string => {
+        // Input validation
+        if (!searchData || !searchData.searchQuery) {
+            console.warn(TAG, 'Invalid search data provided to extractLocationFromSearchData');
+            return 'Unknown Location';
+        }
+
+        const originalQuery = searchData.searchQuery.trim();
+        
+        // Handle empty or very short queries
+        if (originalQuery.length === 0) {
+            console.warn(TAG, 'Empty search query provided');
+            return 'Unknown Location';
+        }
+
+        if (originalQuery.length <= 2) {
+            console.warn(TAG, 'Search query too short for location extraction');
+            return originalQuery;
+        }
+
+        const query = originalQuery.toLowerCase();
+        console.log(TAG, 'Extracting location from query:', originalQuery);
+
+        // Enhanced location patterns with priority order
+        const locationPatterns = [
+            // Most specific patterns first
+            { pattern: ' near ', description: 'near pattern' },
+            { pattern: ' in ', description: 'in pattern' },
+            { pattern: ' at ', description: 'at pattern' },
+            { pattern: ' around ', description: 'around pattern' },
+            { pattern: ' from ', description: 'from pattern' },
+            { pattern: ' to ', description: 'to pattern' },
+            { pattern: ' by ', description: 'by pattern' },
+            { pattern: ' close to ', description: 'close to pattern' },
+            { pattern: ' next to ', description: 'next to pattern' },
+        ];
+
+        // Try each pattern in order
+        for (const { pattern, description } of locationPatterns) {
+            if (query.includes(pattern)) {
+                const parts = query.split(pattern);
+                let location = parts[parts.length - 1].trim();
+                
+                // Clean up the extracted location
+                location = cleanLocationString(location, originalQuery);
+                
+                if (location && location.length > 0) {
+                    console.log(TAG, `Found location using ${description}:`, location);
+                    return location;
+                }
+            }
+        }
+
+        // Try alternative patterns for common queries
+        const alternativeLocation = extractAlternativeLocationPatterns(query, originalQuery);
+        if (alternativeLocation) {
+            console.log(TAG, 'Found location using alternative pattern:', alternativeLocation);
+            return alternativeLocation;
+        }
+
+        // Fallback: use the original query with length limit
+        const fallbackLocation = originalQuery.length > 50 
+            ? `${originalQuery.substring(0, 50).trim()}...`
+            : originalQuery;
+            
+        console.log(TAG, 'No location pattern found, using fallback:', fallbackLocation);
+        return fallbackLocation;
+    };
+
+    /**
+     * Cleans and validates extracted location string
+     * @param location - Raw extracted location string
+     * @param originalQuery - Original search query for context
+     * @returns Cleaned location string
+     */
+    const cleanLocationString = (location: string, originalQuery: string): string => {
+        if (!location || typeof location !== 'string') {
+            return '';
+        }
+
+        let cleaned = location.trim();
+
+        // Remove common trailing words that aren't part of location
+        const trailingWordsToRemove = [
+            'for', 'with', 'and', 'or', 'but', 'so', 'yet', 'because',
+            'restaurants', 'food', 'places', 'activities', 'things',
+            'coffee', 'dinner', 'lunch', 'breakfast', 'shopping',
+            'today', 'tomorrow', 'tonight', 'weekend'
+        ];
+
+        const words = cleaned.split(' ');
+        let cleanedWords = [...words];
+
+        // Remove trailing non-location words
+        while (cleanedWords.length > 0) {
+            const lastWord = cleanedWords[cleanedWords.length - 1].toLowerCase();
+            if (trailingWordsToRemove.includes(lastWord)) {
+                cleanedWords.pop();
+            } else {
+                break;
+            }
+        }
+
+        cleaned = cleanedWords.join(' ').trim();
+
+        // Minimum length validation
+        if (cleaned.length < 2) {
+            return '';
+        }
+
+        // Maximum length with intelligent truncation
+        if (cleaned.length > 40) {
+            // Try to truncate at word boundary
+            const truncated = cleaned.substring(0, 40);
+            const lastSpaceIndex = truncated.lastIndexOf(' ');
+            
+            if (lastSpaceIndex > 20) {
+                cleaned = truncated.substring(0, lastSpaceIndex) + '...';
+            } else {
+                cleaned = truncated + '...';
+            }
+        }
+
+        // Capitalize first letter of each word for display
+        cleaned = cleaned.split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+
+        return cleaned;
+    };
+
+    /**
+     * Extracts location using alternative patterns and heuristics
+     * @param query - Lowercase search query
+     * @param originalQuery - Original cased search query
+     * @returns Extracted location or null
+     */
+    const extractAlternativeLocationPatterns = (query: string, originalQuery: string): string | null => {
+        // Pattern: "restaurants [in] downtown seattle" -> "downtown seattle"
+        const restaurantPattern = /(?:restaurants?|food|dining|eat|coffee|bars?)\s+(?:in\s+)?(.+)/i;
+        let match = originalQuery.match(restaurantPattern);
+        if (match && match[1]) {
+            const location = cleanLocationString(match[1], originalQuery);
+            if (location.length > 2) return location;
+        }
+
+        // Pattern: "things to do [in] paris" -> "paris"
+        const activitiesPattern = /(?:things\s+to\s+do|activities|attractions|visit|explore)\s+(?:in\s+)?(.+)/i;
+        match = originalQuery.match(activitiesPattern);
+        if (match && match[1]) {
+            const location = cleanLocationString(match[1], originalQuery);
+            if (location.length > 2) return location;
+        }
+
+        // Pattern: "show me [places in] tokyo" -> "tokyo"
+        const showMePattern = /(?:show\s+me|find\s+me|get\s+me)\s+(?:places\s+(?:in\s+)?|.*?(?:in\s+))(.+)/i;
+        match = originalQuery.match(showMePattern);
+        if (match && match[1]) {
+            const location = cleanLocationString(match[1], originalQuery);
+            if (location.length > 2) return location;
+        }
+
+        // Pattern: Look for common city/state/country patterns
+        const locationWords = [
+            'city', 'town', 'village', 'downtown', 'uptown', 'district',
+            'beach', 'park', 'center', 'square', 'street', 'avenue',
+            'county', 'state', 'province', 'country'
+        ];
+        
+        for (const locWord of locationWords) {
+            if (query.includes(locWord)) {
+                // Extract context around the location word
+                const index = query.indexOf(locWord);
+                const start = Math.max(0, index - 20);
+                const end = Math.min(query.length, index + locWord.length + 20);
+                const context = originalQuery.substring(start, end).trim();
+                
+                const contextLocation = cleanLocationString(context, originalQuery);
+                if (contextLocation.length > 2) {
+                    return contextLocation;
+                }
+            }
+        }
+
+        return null;
     };
 
     // ========================================
@@ -455,14 +678,14 @@ export default function ChatScreen() {
      * @param error - Error object or message
      */
     const handleChatError = (error: unknown): void => {
-        console.error('[ChatScreen] Chat error occurred:', error);
+        console.error(TAG, 'Chat error occurred:', error);
         setIsLoading(false);
         
         const errorMessage = error instanceof Error 
             ? error.message 
             : 'An unexpected error occurred';
 
-        console.log('[ChatScreen] Showing error alert to user:', errorMessage);
+        console.log(TAG, 'Showing error alert to user:', errorMessage);
 
         Alert.alert(
             'Connection Error',
@@ -471,14 +694,15 @@ export default function ChatScreen() {
                 {
                     text: 'Go Back',
                     onPress: () => {
-                        console.log('[ChatScreen] User chose to go back after error');
+                        console.log(TAG, 'User chose to go back after error');
                         router.back();
                     },
                 },
                 {
                     text: 'Retry',
                     onPress: () => {
-                        console.log('[ChatScreen] User chose to retry after error');
+                        console.log(TAG, 'User chose to retry after error');
+                        setIsInitialized(false);
                         setIsLoading(true);
                         initializeChat();
                     },
@@ -495,7 +719,7 @@ export default function ChatScreen() {
      * Scrolls chat to bottom for new messages
      */
     const scrollToBottom = (): void => {
-        console.log('[ChatScreen] Scrolling to bottom of chat');
+        console.log(TAG, 'Scrolling to bottom of chat');
         scrollViewRef.current?.scrollToEnd({ animated: true });
     };
 
@@ -530,7 +754,7 @@ export default function ChatScreen() {
         }
 
         const formattedText = filterTexts.join(' • ');
-        console.log('[ChatScreen] Formatted filters:', formattedText);
+        console.log(TAG, 'Formatted filters:', formattedText);
         return formattedText;
     };
 
@@ -546,7 +770,7 @@ export default function ChatScreen() {
      */
     const renderMessage = (message: ChatMessage, index: number): React.ReactElement => {
         const isUser = message.type === 'user';
-        console.log(`[ChatScreen] Rendering message ${index}:`, {
+        console.log(TAG, `Rendering message ${index}:`, {
             id: message.id,
             type: message.type,
             contentLength: message.content.length,
@@ -592,7 +816,7 @@ export default function ChatScreen() {
      * @returns JSX element for loading state
      */
     const renderLoadingMessage = (): React.ReactElement => {
-        console.log('[ChatScreen] Rendering loading message');
+        console.log(TAG, 'Rendering loading message');
         
         return (
             <View style={[styles.messageContainer, styles.aiMessageContainer]}>
@@ -621,14 +845,14 @@ export default function ChatScreen() {
      */
     const renderHeader = (): React.ReactElement => {
         const title = chatData?.title || searchData?.searchQuery || 'New Chat';
-        console.log('[ChatScreen] Rendering header with title:', title);
+        console.log(TAG, 'Rendering header with title:', title);
         
         return (
             <View style={styles.header}>
                 <TouchableOpacity 
                     style={styles.backButton} 
                     onPress={() => {
-                        console.log('[ChatScreen] Back button pressed');
+                        console.log(TAG, 'Back button pressed');
                         router.back();
                     }}
                     accessibilityLabel="Go back"
@@ -647,7 +871,7 @@ export default function ChatScreen() {
     // ========================================
     // RENDER
     // ========================================
-    console.log('[ChatScreen] Rendering component with state:', {
+    console.log(TAG, 'Rendering component with state:', {
         isLoading,
         messageCount: messages.length,
         hasSearchData: !!searchData,
@@ -665,7 +889,7 @@ export default function ChatScreen() {
                 style={styles.chatContainer}
                 contentContainerStyle={styles.chatContent}
                 onContentSizeChange={() => {
-                    console.log('[ChatScreen] Content size changed, auto-scrolling');
+                    console.log(TAG, 'Content size changed, auto-scrolling');
                     scrollToBottom();
                 }}
                 showsVerticalScrollIndicator={false}
@@ -692,32 +916,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-        paddingTop: LAYOUT.statusBarPadding,
+        paddingHorizontal: SPACING.xl,
+        paddingVertical: SPACING.md + SPACING.xs, // 15
+        paddingTop: CHAT_LAYOUT.statusBarPadding,
         backgroundColor: COLORS.white,
         borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        elevation: 2,
-        shadowColor: COLORS.text,
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        borderBottomColor: COLORS.border,
+        ...SHADOWS.card,
     },
     backButton: {
-        padding: 5,
-        borderRadius: 20,
+        padding: SPACING.xs + 1, // 5
+        borderRadius: SPACING.xl,
     },
     headerTitle: {
         flex: 1,
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
         color: COLORS.text,
         textAlign: 'center',
-        marginHorizontal: 10,
+        marginHorizontal: SPACING.sm + SPACING.xs, // 10
     },
     headerSpacer: {
         width: 34, // Same width as back button for centering
@@ -728,14 +945,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     chatContent: {
-        padding: LAYOUT.contentPadding,
-        paddingBottom: 40,
+        padding: CHAT_LAYOUT.contentPadding,
+        paddingBottom: SPACING.xxxl,
     },
     
     // Message Containers
     messageContainer: {
-        marginVertical: LAYOUT.messageMargin,
-        maxWidth: LAYOUT.maxBubbleWidth,
+        marginVertical: CHAT_LAYOUT.messageMargin,
+        maxWidth: CHAT_LAYOUT.maxBubbleWidth,
     },
     userMessageContainer: {
         alignSelf: 'flex-end',
@@ -746,44 +963,37 @@ const styles = StyleSheet.create({
     
     // Message Bubbles
     messageBubble: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: LAYOUT.messageBubbleRadius,
-        elevation: 1,
-        shadowColor: COLORS.text,
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 1,
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.md,
+        borderRadius: CHAT_LAYOUT.messageBubbleRadius,
+        ...SHADOWS.card,
     },
     userBubble: {
-        backgroundColor: COLORS.userBubble,
-        borderBottomRightRadius: LAYOUT.smallBubbleRadius,
+        backgroundColor: CHAT_COLORS.userBubble,
+        borderBottomRightRadius: CHAT_LAYOUT.smallBubbleRadius,
     },
     aiBubble: {
-        backgroundColor: COLORS.aiBubble,
-        borderBottomLeftRadius: LAYOUT.smallBubbleRadius,
+        backgroundColor: CHAT_COLORS.aiBubble,
+        borderBottomLeftRadius: CHAT_LAYOUT.smallBubbleRadius,
     },
     
     // Message Text
     messageText: {
-        fontSize: 16,
-        lineHeight: 22,
+        fontSize: TYPOGRAPHY.fontSize.base,
+        lineHeight: TYPOGRAPHY.lineHeight.relaxed,
     },
     userMessageText: {
-        color: COLORS.userText,
+        color: CHAT_COLORS.userText,
     },
     aiMessageText: {
-        color: COLORS.aiText,
+        color: CHAT_COLORS.aiText,
     },
     filterText: {
-        fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.8)',
-        marginTop: 8,
+        fontSize: TYPOGRAPHY.fontSize.xs,
+        color: COLORS.white,
+        marginTop: SPACING.sm,
         fontStyle: 'italic',
-        lineHeight: 16,
+        lineHeight: SPACING.lg,
     },
     
     // Loading Animation
@@ -792,10 +1002,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingDots: {
-        marginLeft: 8,
+        marginLeft: SPACING.sm,
     },
     loadingText: {
-        fontSize: 14,
+        fontSize: TYPOGRAPHY.fontSize.sm,
         color: COLORS.lightText,
         fontStyle: 'italic',
     },
