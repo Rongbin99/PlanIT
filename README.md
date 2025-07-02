@@ -75,7 +75,7 @@ export const BACKEND_URL =
 
 Finally, run the server on your local machine.
 
-```
+```ts
 // for Android
 npm run android
 
