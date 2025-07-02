@@ -59,6 +59,20 @@ Install the node dependencies.
 npm install
 ```
 
+If needed, modify the Backend URL in `ApiConfig.ts` for your local setup (default to AWS Lambda API URL)
+
+```ts
+/*
+ * Choose the appropriate URL based on your testing setup:
+ * - iOS Simulator: use localhost:3000 
+ * - Android Emulator: use 10.0.2.2:3000 (maps to host machine's localhost)
+ * - Physical Device: use your network IP (e.g., 192.168.X.X:3000)
+ * - Production: use your deployed API URL (e.g., AWS Lambda URL)
+ */
+
+export const BACKEND_URL =
+```
+
 Finally, run the server on your local machine.
 
 ```
