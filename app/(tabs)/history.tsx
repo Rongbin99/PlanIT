@@ -768,7 +768,7 @@ export default function HistoryScreen() {
                 windowSize={10}
                 removeClippedSubviews={true}
                 getItemLayout={(data, index) => {
-                    const itemHeight = 120; // Approximate item height
+                    const itemHeight = LAYOUT.card.height;
                     return {
                         length: itemHeight,
                         offset: itemHeight * index,
