@@ -150,6 +150,7 @@ export const LAYOUT = {
         marginBottom: SPACING.sm + SPACING.xs, // 14
         padding: SPACING.lg,
         borderRadius: RADIUS.lg,
+        height: 120,
     },
     emptyState: {
         paddingHorizontal: SPACING.xxl,

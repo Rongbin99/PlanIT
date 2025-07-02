@@ -12,14 +12,15 @@
 // IMPORTS
 // ========================================
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, ImageBackground } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TIME_CONSTANTS } from '@/constants/DesignTokens';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
-import { getChatsFromLocalStorage, convertChatsToHistoryItems, mergeChatsWithLocal, deleteChatFromLocalStorage, TripPlanHistoryItem } from '@/constants/StorageUtils';
+import { getChatsFromLocalStorage, convertChatsToHistoryItems, mergeChatsWithLocal, deleteChatFromLocalStorage, TripPlanHistoryItem, ImageData } from '@/constants/StorageUtils';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -34,11 +35,37 @@ interface RenderItemProps {
 }
 
 /**
+ * Trip data structure from API
+ */
+interface APITripData {
+    id: string;
+    title: string;
+    location: string;
+    lastUpdated: string;
+    searchData: Record<string, any>;
+    image: ImageData;
+}
+
+/**
  * API response for chat history
  */
 interface TripPlanHistoryResponse {
     success: boolean;
-    trips_list: TripPlanHistoryItem[];
+    trips: APITripData[];
+    pagination: {
+        total: number;
+        limit: number;
+        offset: number;
+        hasMore: boolean;
+        nextOffset: number | null;
+    };
+    metadata: {
+        sortBy: string;
+        sortOrder: string;
+        searchQuery: string | null;
+        timestamp: string;
+        imagesIncluded: boolean;
+    };
     error?: string;
 }
 
@@ -61,18 +88,66 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
         title: 'After work friends hangout and food in downtown Toronto',
         location: 'Toronto, Ontario, Canada',
         lastUpdated: new Date(Date.now() - TIME_CONSTANTS.HOUR_MS).toISOString(),
+        image: {
+            id: "KHVwR0vTA-A",
+            url: "https://images.unsplash.com/photo-1610509659326-b35b9b15bf51?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NjgwNTN8MHwxfHNlYXJjaHwxfHxUb3JvbnRvJTIwc2t5bGluZXxlbnwxfDB8fHwxNzUxNDIxNzg4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+            thumbnail: "https://images.unsplash.com/photo-1610509659326-b35b9b15bf51?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NjgwNTN8MHwxfHNlYXJjaHwxfHxUb3JvbnRvJTIwc2t5bGluZXxlbnwxfDB8fHwxNzUxNDIxNzg4fDA&ixlib=rb-4.1.0&q=80&w=400",
+            alt_description: "city skyline under full moon",
+            photographer: {
+                name: "Dave Xu",
+                username: "phtm",
+                profile_url: "https://unsplash.com/@phtm"
+            },
+            unsplash_url: "https://unsplash.com/photos/city-skyline-under-full-moon-KHVwR0vTA-A",
+            location: "Toronto",
+            original_location: "Toronto, Ontario, Canada",
+            search_query: "Toronto skyline",
+            cached_at: "2025-07-02T02:05:42.551Z"
+      },
     },
     {
         id: 'trip_002',
         title: 'Weekend activities for couples',
         location: 'Montréal, Quebec, Canada',
         lastUpdated: new Date(Date.now() - TIME_CONSTANTS.DAY_MS).toISOString(),
+        image: {
+            id: "CL9Pl-5fXBU",
+            url: "https://images.unsplash.com/photo-1659482513037-950fea76794c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NjgwNTN8MHwxfHNlYXJjaHwxfHxNb250cmVhbCUyMHNreWxpbmV8ZW58MXwwfHx8MTc1MTQyMTc4OHww&ixlib=rb-4.1.0&q=80&w=1080",
+            thumbnail: "https://images.unsplash.com/photo-1659482513037-950fea76794c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NjgwNTN8MHwxfHNlYXJjaHwxfHxNb250cmVhbCUyMHNreWxpbmV8ZW58MXwwfHx8MTc1MTQyMTc4OHww&ixlib=rb-4.1.0&q=80&w=400",
+            alt_description: "a city with many tall buildings",
+            photographer: {
+                name: "Grant Van Cleemput",
+                username: "gvancleem",
+                profile_url: "https://unsplash.com/@gvancleem"
+            },
+            unsplash_url: "https://unsplash.com/photos/a-city-with-many-tall-buildings-CL9Pl-5fXBU",
+            location: "Montreal",
+            original_location: "Montreal, Quebec, Canada",
+            search_query: "Montreal skyline",
+            cached_at: "2025-07-02T02:05:42.559Z"
+      },
     },
     {
         id: 'trip_003',
         title: 'Family-friendly activities in Vancouver',
         location: 'Vancouver, British Columbia, Canada',
         lastUpdated: new Date(Date.now() - TIME_CONSTANTS.DAY_MS * 2).toISOString(),
+        image: {
+            id: "Wc45W-dQFlA",
+            url: "https://images.unsplash.com/photo-1647655806923-e8202f4f2b8c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NjgwNTN8MHwxfHNlYXJjaHwxfHxWYW5jb3V2ZXIlMjBza3lsaW5lfGVufDF8MHx8fDE3NTE0MjE3ODh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+            thumbnail: "https://images.unsplash.com/photo-1647655806923-e8202f4f2b8c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NjgwNTN8MHwxfHNlYXJjaHwxfHxWYW5jb3V2ZXIlMjBza3lsaW5lfGVufDF8MHx8fDE3NTE0MjE3ODh8MA&ixlib=rb-4.1.0&q=80&w=400",
+            alt_description: "an aerial view of a city and a harbor",
+            photographer: {
+                name: "Adrian Yu",
+                username: "visualstrance",
+                profile_url: "https://unsplash.com/@visualstrance"
+            },
+            unsplash_url: "https://unsplash.com/photos/an-aerial-view-of-a-city-and-a-harbor-Wc45W-dQFlA",
+            location: "Vancouver",
+            original_location: "Vancouver, British Columbia, Canada",
+            search_query: "Vancouver skyline",
+            cached_at: "2025-07-02T02:05:42.553Z"
+      },
     },
 ];
 
@@ -205,15 +280,40 @@ export default function HistoryScreen() {
         const result: TripPlanHistoryResponse = await response.json();
         console.log(TAG, 'API response data:', {
             success: result.success,
-            tripPlanCount: result.trips_list?.length || 0,
-            error: result.error
+            tripPlanCount: result.trips?.length || 0,
+            error: result.error,
+            hasImages: result.trips?.some(trip => trip.image) || false,
+            imagesIncluded: result.metadata?.imagesIncluded || false,
+            totalTrips: result.pagination?.total || 0,
+            hasMore: result.pagination?.hasMore || false
         });
 
         if (!result.success) {
             throw new Error(result.error || 'Failed to fetch trip plan history');
         }
 
-        return result.trips_list || [];
+        // Log image information for debugging
+        result.trips?.forEach((trip, index) => {
+            console.log(TAG, `Trip ${index + 1} image:`, {
+                id: trip.id,
+                hasImage: !!trip.image,
+                imageUrl: trip.image?.url ? `${trip.image.url.substring(0, 50)}...` : 'none',
+                thumbnailUrl: trip.image?.thumbnail ? `${trip.image.thumbnail.substring(0, 50)}...` : 'none'
+            });
+        });
+
+        // Convert API data to TripPlanHistoryItem format
+        const convertedTrips: TripPlanHistoryItem[] = result.trips?.map(trip => ({
+            id: trip.id,
+            title: trip.title,
+            location: trip.location,
+            lastUpdated: trip.lastUpdated,
+            searchData: trip.searchData,
+            image: trip.image
+        })) || [];
+
+        console.log(TAG, `Converted ${convertedTrips.length} trips from API format`);
+        return convertedTrips;
     };
 
     /**
@@ -388,6 +488,25 @@ export default function HistoryScreen() {
     // Utility Functions
     
     /**
+     * Safely extracts image URL from trip data, preferring thumbnail over full URL
+     * @param trip - Trip plan item
+     * @returns Image URL string or null if no valid image
+     */
+    const getImageUrl = (trip: TripPlanHistoryItem): string | null => {
+        if (!trip.image) {
+            return null;
+        }
+        
+        // Extract URL from ImageData object, preferring thumbnail
+        if (typeof trip.image === 'object' && trip.image !== null) {
+            return trip.image.thumbnail || trip.image.url;
+        }
+        
+        // This shouldn't happen with the current structure, but adding for safety
+        return null;
+    };
+    
+    /**
      * Formats timestamp for display in trip plan list
      * @param timestamp - ISO timestamp string
      * @returns Human-readable time string
@@ -431,10 +550,14 @@ export default function HistoryScreen() {
      * @returns JSX element for trip plan item
      */
     const renderTripPlanItem = ({ item, index }: RenderItemProps): React.ReactElement => {
+        const imageUrl = getImageUrl(item);
+        
         console.log(TAG, `Rendering trip plan item ${index}:`, {
             id: item.id,
             title: item.title,
-            location: item.location
+            location: item.location,
+            hasImage: !!imageUrl,
+            imageUrl: imageUrl ? `${imageUrl.substring(0, 50)}...` : 'none'
         });
         
         // Render the trip plan item with background image
@@ -446,44 +569,110 @@ export default function HistoryScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Open trip plan: ${item.title}`}
             >
-                <View style={styles.tripPlanContent}>
-                    {/* Trip Plan Header: Title and timestamp */}
-                    <View style={styles.tripPlanHeader}>
-                        <Text style={styles.tripPlanTitle} numberOfLines={2}>
-                            {item.title}
-                        </Text>
-                        <Text style={styles.timestamp}>
-                            {formatTimestamp(item.lastUpdated)}
-                        </Text>
-                    </View>
-                    
-                    {/* Item Footer: Location and Delete Button */}
-                    <View style={styles.tripPlanFooter}>
-                        <View style={styles.locationCount}>
-                            <MaterialCommunityIcons 
-                                name="map-marker-outline" 
-                                size={ICON_SIZES.sm} 
-                                color={COLORS.lightText} 
-                            />
-                            <Text style={styles.locationCountText}>
-                                {item.location}
+                {imageUrl ? (
+                    /* Trip Plan with Background Image */
+                    <ImageBackground
+                        source={{ uri: imageUrl }}
+                        style={styles.backgroundImage}
+                        resizeMode="cover"
+                        onError={(error) => {
+                            console.warn(TAG, `Failed to load image for trip ${item.id}:`, {
+                                error: error.nativeEvent.error,
+                                imageUrl: imageUrl
+                            });
+                        }}
+                        onLoad={() => {
+                            console.log(TAG, `Successfully loaded image for trip ${item.id}:`, {
+                                imageUrl: imageUrl
+                            });
+                        }}
+                    >
+                        {/* Dark gradient overlay for text readability */}
+                        <LinearGradient
+                            colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
+                            style={styles.gradientOverlay}
+                        >
+                            <View style={styles.tripPlanContent}>
+                                {/* Trip Plan Header: Title and timestamp */}
+                                <View style={styles.tripPlanHeader}>
+                                    <Text style={[styles.tripPlanTitle, styles.tripPlanTitleWithImage]} numberOfLines={2}>
+                                        {item.title}
+                                    </Text>
+                                    <Text style={[styles.timestamp, styles.timestampWithImage]}>
+                                        {formatTimestamp(item.lastUpdated)}
+                                    </Text>
+                                </View>
+                                
+                                {/* Item Footer: Location and Delete Button */}
+                                <View style={styles.tripPlanFooter}>
+                                    <View style={styles.locationCount}>
+                                        <MaterialCommunityIcons 
+                                            name="map-marker-outline" 
+                                            size={ICON_SIZES.sm} 
+                                            color={COLORS.white} 
+                                        />
+                                        <Text style={[styles.locationCountText, styles.locationCountTextWithImage]}>
+                                            {item.location}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity 
+                                        style={styles.deleteButton}
+                                        onPress={() => handleDeleteTripPlan(item.id)}
+                                        hitSlop={LAYOUT.hitSlop}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Delete trip plan"
+                                    >
+                                        <MaterialCommunityIcons 
+                                            name="delete-outline" 
+                                            size={ICON_SIZES.md} 
+                                            color={COLORS.white} 
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </LinearGradient>
+                    </ImageBackground>
+                ) : (
+                    /* Trip Plan without Background Image (fallback) */
+                    <View style={styles.tripPlanContent}>
+                        {/* Trip Plan Header: Title and timestamp */}
+                        <View style={styles.tripPlanHeader}>
+                            <Text style={styles.tripPlanTitle} numberOfLines={2}>
+                                {item.title}
+                            </Text>
+                            <Text style={styles.timestamp}>
+                                {formatTimestamp(item.lastUpdated)}
                             </Text>
                         </View>
-                        <TouchableOpacity 
-                            style={styles.deleteButton}
-                            onPress={() => handleDeleteTripPlan(item.id)}
-                            hitSlop={LAYOUT.hitSlop}
-                            accessibilityRole="button"
-                            accessibilityLabel="Delete trip plan"
-                        >
-                            <MaterialCommunityIcons 
-                                name="delete-outline" 
-                                size={ICON_SIZES.md} 
-                                color={COLORS.lightText} 
-                            />
-                        </TouchableOpacity>
+                        
+                        {/* Item Footer: Location and Delete Button */}
+                        <View style={styles.tripPlanFooter}>
+                            <View style={styles.locationCount}>
+                                <MaterialCommunityIcons 
+                                    name="map-marker-outline" 
+                                    size={ICON_SIZES.sm} 
+                                    color={COLORS.lightText} 
+                                />
+                                <Text style={styles.locationCountText}>
+                                    {item.location}
+                                </Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={styles.deleteButton}
+                                onPress={() => handleDeleteTripPlan(item.id)}
+                                hitSlop={LAYOUT.hitSlop}
+                                accessibilityRole="button"
+                                accessibilityLabel="Delete trip plan"
+                            >
+                                <MaterialCommunityIcons 
+                                    name="delete-outline" 
+                                    size={ICON_SIZES.md} 
+                                    color={COLORS.lightText} 
+                                />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
+                )}
             </TouchableOpacity>
         );
     };
@@ -643,16 +832,30 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.white,
         borderRadius: LAYOUT.card.borderRadius,
         marginBottom: LAYOUT.card.marginBottom,
+        minHeight: LAYOUT.card.height,
         ...SHADOWS.card,
+        overflow: 'hidden', // Ensure border radius is applied to background image
+    },
+    backgroundImage: {
+        width: '100%',
+        height: LAYOUT.card.height,
+        borderRadius: LAYOUT.card.borderRadius,
+    },
+    gradientOverlay: {
+        flex: 1,
+        justifyContent: 'space-between',
+        borderRadius: LAYOUT.card.borderRadius,
     },
     tripPlanContent: {
+        flex: 1,
         padding: LAYOUT.card.padding,
+        justifyContent: 'space-between',
     },
     tripPlanHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: SPACING.sm,
+        flex: 1,
     },
     tripPlanTitle: {
         flex: 1,
@@ -661,10 +864,22 @@ const styles = StyleSheet.create({
         color: COLORS.text,
         marginRight: SPACING.sm + SPACING.xs, // 10
     },
+    tripPlanTitleWithImage: {
+        color: COLORS.white,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 2,
+    },
     timestamp: {
         fontSize: TYPOGRAPHY.fontSize.xs,
         color: COLORS.lightText,
         flexShrink: 0,
+    },
+    timestampWithImage: {
+        color: COLORS.white,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 2,
     },
     tripPlanFooter: {
         flexDirection: 'row',
@@ -679,6 +894,14 @@ const styles = StyleSheet.create({
         fontSize: TYPOGRAPHY.fontSize.xs,
         color: COLORS.lightText,
         marginLeft: SPACING.xs,
+    },
+    locationCountTextWithImage: {
+        fontSize: TYPOGRAPHY.fontSize.xs,
+        color: COLORS.white,
+        marginLeft: SPACING.xs,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 2,
     },
     deleteButton: {
         padding: SPACING.xs,
