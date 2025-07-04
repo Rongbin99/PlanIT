@@ -11,9 +11,9 @@
 // ========================================
 // IMPORTS
 // ========================================
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert, Dimensions, ActivityIndicator, FlatList } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -73,7 +73,7 @@ const HOME_SPACING = {
     dropdownMarginTop: SPACING.sm,
     iconPadding: SPACING.sm,
     contentPadding: SPACING.xl,
-    sectionMargin: SPACING.xl,
+    sectionMargin: SPACING.md,
     optionPaddingVertical: SPACING.sm,
     textMarginLeft: SPACING.md,
     subSectionMarginTop: SPACING.sm,
@@ -233,7 +233,7 @@ export default function HomeScreen() {
             const interval = setInterval(() => {
                 // Only animate if input is empty and not focused
                 if (inputValue.length === 0 && !isSearchFocused) {
-                    console.log(TAG, 'Animating placeholder to index:', (placeholderIndex + 1) % SEARCH_PLACEHOLDER_OPTIONS.length);
+                    console.log(TAG, 'Animating placeholder to random index');
                     
                     // Animate out (slide up)
                     Animated.timing(placeholderAnim, {
@@ -241,10 +241,15 @@ export default function HomeScreen() {
                         duration: ANIMATIONS.placeholderDuration,
                         useNativeDriver: true,
                     }).start(() => {
-                        // Update placeholder text
+                        // Update placeholder text to random option
                         setPlaceholderIndex((prev) => {
-                            const next = (prev + 1) % SEARCH_PLACEHOLDER_OPTIONS.length;
+                            let next;
+                            do {
+                                next = Math.floor(Math.random() * SEARCH_PLACEHOLDER_OPTIONS.length);
+                            } while (next === prev && SEARCH_PLACEHOLDER_OPTIONS.length > 1);
+                            
                             setDisplayedPlaceholder(SEARCH_PLACEHOLDER_OPTIONS[next]);
+                            console.log(TAG, 'Random placeholder selected:', SEARCH_PLACEHOLDER_OPTIONS[next]);
                             return next;
                         });
                         
@@ -353,6 +358,19 @@ export default function HomeScreen() {
 
         setupLocation();
     }, []);
+
+    /**
+     * Reset UI state when screen comes into focus
+     * Ensures dropdown and action sheets are closed when navigating back to this tab
+     */
+    useFocusEffect(
+        useCallback(() => {
+            console.log(TAG, 'HomeScreen focused, resetting UI state');
+            setIsDropdownVisible(false);
+            setIsActionSheetVisible(false);
+            setIsSearchFocused(false);
+        }, [])
+    );
 
     // ========================================
     // LOCATION & EVENT HANDLERS
@@ -519,15 +537,6 @@ export default function HomeScreen() {
     };
 
     /**
-     * Handles cancelling the price selection
-     */
-    const handlePriceCancel = (): void => {
-        console.log(TAG, 'Price selection cancelled');
-        setIsActionSheetVisible(false);
-        SheetManager.hide('price-selection-sheet');
-    };
-
-    /**
      * Resets all filters to their default values
      */
     const resetFilters = (): void => {
@@ -652,16 +661,23 @@ export default function HomeScreen() {
     );
 
     /**
-     * Renders radio button icon based on selected state
-     * @param isSelected - Whether the radio button is selected
-     * @returns JSX element for radio button icon
+     * Renders highlighted button based on selected state
+     * @param isSelected - Whether the button is selected
+     * @param text - The text to display on the button
+     * @param icon - The icon to display when not selected
+     * @returns JSX element for highlighted button
      */
-    const renderRadio = (isSelected: boolean): React.ReactElement => (
-        <MaterialCommunityIcons 
-            name={isSelected ? "radiobox-marked" : "radiobox-blank"} 
-            size={HOME_ICON_SIZES.radio} 
-            color={isSelected ? COLORS.primary : HOME_COLORS.placeholder} 
-        />
+    const renderHighlightButton = (isSelected: boolean, text: string, icon: string): React.ReactElement => (
+        <View style={[styles.highlightButton, isSelected && styles.highlightButtonSelected]}>
+            <MaterialCommunityIcons 
+                name={isSelected ? "check" : icon as any} 
+                size={HOME_ICON_SIZES.radio} 
+                color={isSelected ? COLORS.white : HOME_COLORS.placeholder} 
+            />
+            <Text style={[styles.highlightButtonText, isSelected && styles.highlightButtonTextSelected]}>
+                {text}
+            </Text>
+        </View>
     );
 
     /**
@@ -843,22 +859,31 @@ export default function HomeScreen() {
                         <View style={styles.filterSection}>
                             <Text style={styles.filterTitle}>Environment</Text>
                             <View style={styles.threeColumnContainer}>
-                                {(['indoor', 'outdoor', 'mixed'] as const).map((env) => (
-                                    <View key={env} style={styles.columnItem}>
-                                        <TouchableOpacity 
-                                            style={styles.filterOption} 
-                                            onPress={() => {
-                                                console.log(TAG, 'Environment changed to:', env);
-                                                setEnvironment(env);
-                                            }}
-                                        >
-                                            {renderRadio(environment === env)}
-                                            <Text style={styles.filterText}>
-                                                {env.charAt(0).toUpperCase() + env.slice(1)}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
+                                {(['indoor', 'outdoor', 'mixed'] as const).map((env) => {
+                                    // Define specific icons for each environment
+                                    const getEnvironmentIcon = (envType: string) => {
+                                        switch (envType) {
+                                            case 'indoor': return 'home';
+                                            case 'outdoor': return 'tree';
+                                            case 'mixed': return 'city';
+                                            default: return 'radiobox-blank';
+                                        }
+                                    };
+                                    
+                                    return (
+                                        <View key={env} style={styles.columnItem}>
+                                            <TouchableOpacity 
+                                                style={styles.filterOption} 
+                                                onPress={() => {
+                                                    console.log(TAG, 'Environment changed to:', env);
+                                                    setEnvironment(env);
+                                                }}
+                                            >
+                                                {renderHighlightButton(environment === env, env.charAt(0).toUpperCase() + env.slice(1), getEnvironmentIcon(env))}
+                                            </TouchableOpacity>
+                                        </View>
+                                    );
+                                })}
                             </View>
                         </View>
 
@@ -896,22 +921,31 @@ export default function HomeScreen() {
                         <View style={styles.filterSection}>
                             <Text style={styles.filterTitle}>Group Size</Text>
                             <View style={styles.threeColumnContainer}>
-                                {(['solo', 'duo', 'group'] as const).map((size) => (
-                                    <View key={size} style={styles.columnItem}>
-                                        <TouchableOpacity 
-                                            style={styles.filterOption} 
-                                            onPress={() => {
-                                                console.log(TAG, 'Group size changed to:', size);
-                                                setGroupSize(size);
-                                            }}
-                                        >
-                                            {renderRadio(groupSize === size)}
-                                            <Text style={styles.filterText}>
-                                                {size.charAt(0).toUpperCase() + size.slice(1)}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
+                                {(['solo', 'duo', 'group'] as const).map((size) => {
+                                    // Define specific icons for each group size
+                                    const getGroupSizeIcon = (sizeType: string) => {
+                                        switch (sizeType) {
+                                            case 'solo': return 'account';
+                                            case 'duo': return 'account-multiple';
+                                            case 'group': return 'account-group';
+                                            default: return 'radiobox-blank';
+                                        }
+                                    };
+                                    
+                                    return (
+                                        <View key={size} style={styles.columnItem}>
+                                            <TouchableOpacity 
+                                                style={styles.filterOption} 
+                                                onPress={() => {
+                                                    console.log(TAG, 'Group size changed to:', size);
+                                                    setGroupSize(size);
+                                                }}
+                                            >
+                                                {renderHighlightButton(groupSize === size, size.charAt(0).toUpperCase() + size.slice(1), getGroupSizeIcon(size))}
+                                            </TouchableOpacity>
+                                        </View>
+                                    );
+                                })}
                             </View>
                         </View>
 
@@ -1002,9 +1036,7 @@ export default function HomeScreen() {
 
             {/* Price Selection Action Sheet */}
             <ActionSheet id="price-selection-sheet" gestureEnabled={true}>
-                <View style={styles.actionSheetContainer}>
-                    <Text style={styles.actionSheetTitle}>Select Price Range</Text>
-                    
+                <View style={styles.actionSheetContainer}>                    
                     <FlatList
                         data={PRICE_RANGE_VALUES}
                         keyExtractor={(item) => item.toString()}
@@ -1017,21 +1049,14 @@ export default function HomeScreen() {
                             >
                                 <Text style={styles.priceOptionText}>{PRICE_RANGE_MAP[item]}</Text>
                                 <Text style={styles.priceDescription}>
-                                    {item === 1 ? 'Budget-friendly' : 
-                                     item === 2 ? 'Moderate' : 
-                                     item === 3 ? 'Premium' : 'Luxury'}
+                                    {item === 1 ? 'Budget ($10-$20)' : 
+                                     item === 2 ? 'Moderate ($20-$30)' : 
+                                     item === 3 ? 'Premium ($30-$50)' : 'Luxury ($50+)'}
                                 </Text>
                             </TouchableOpacity>
                         )}
                         showsVerticalScrollIndicator={false}
                     />
-                    
-                    <TouchableOpacity
-                        style={styles.cancelButton}
-                        onPress={handlePriceCancel}
-                    >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
                 </View>
             </ActionSheet>
         </View>
@@ -1259,17 +1284,26 @@ const styles = StyleSheet.create({
         color: COLORS.lightText,
         fontWeight: TYPOGRAPHY.fontWeight.medium,
     },
-    cancelButton: {
-        backgroundColor: COLORS.lightText,
-        paddingVertical: SPACING.md,
-        paddingHorizontal: SPACING.xl,
-        borderRadius: RADIUS.lg,
+    highlightButton: {
+        padding: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: RADIUS.md,
+        width: '100%',
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: SPACING.lg,
+        justifyContent: 'center',
+        gap: SPACING.xs,
     },
-    cancelButtonText: {
-        fontSize: TYPOGRAPHY.fontSize.lg,
+    highlightButtonSelected: {
+        backgroundColor: COLORS.primary,
+    },
+    highlightButtonText: {
+        fontSize: TYPOGRAPHY.fontSize.base,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
+        color: COLORS.text,
+    },
+    highlightButtonTextSelected: {
         color: COLORS.white,
     },
 });
