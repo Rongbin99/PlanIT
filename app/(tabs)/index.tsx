@@ -805,9 +805,7 @@ export default function HomeScreen() {
                 >
                     <ScrollView 
                         style={styles.dropdownContent} 
-                        showsVerticalScrollIndicator={true}
-                        contentContainerStyle={styles.dropdownScrollContent}
-                        indicatorStyle="default"
+                        showsVerticalScrollIndicator={false}
                     >
                         {/* Time of Day Section */}
                         <View style={styles.filterSection}>
