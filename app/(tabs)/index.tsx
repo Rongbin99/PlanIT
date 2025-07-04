@@ -12,7 +12,7 @@
 // IMPORTS
 // ========================================
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert, Dimensions, ActivityIndicator, FlatList } from 'react-native';
+import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert, Dimensions, ActivityIndicator, FlatList, BackHandler } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MapView from 'react-native-maps';
@@ -95,7 +95,7 @@ const SEARCH_PLACEHOLDER_OPTIONS = [
     "Discover hidden gems in the city",
     "Find your next adventure",
     "Explore local attractions",
-    "Create your dream itinerary",
+    "Create your dream adventure",
     "Search for popular destinations",
     "Find the best spots to visit",
 ] as const;
@@ -227,8 +227,6 @@ export default function HomeScreen() {
      * Only animates when input is empty and not focused
      */
     useEffect(() => {
-        console.log(TAG, 'Setting up placeholder animation with interval:', ANIMATIONS.placeholderInterval);
-        
         const startPlaceholderRotation = () => {
             const interval = setInterval(() => {
                 // Only animate if input is empty and not focused
@@ -358,6 +356,25 @@ export default function HomeScreen() {
 
         setupLocation();
     }, []);
+
+    /**
+     * Handle hardware back button press
+     * Closes dropdown if visible, otherwise allows default back behavior
+     */
+    useEffect(() => {
+        const backAction = () => {
+            if (isDropdownVisible) {
+                console.log(TAG, 'Back button pressed, closing dropdown');
+                closeDropdown();
+                return true; // Prevent default back action
+            }
+            return false; // Allow default back action
+        };
+
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+        return () => backHandler.remove();
+    }, [isDropdownVisible]);
 
     /**
      * Reset UI state when screen comes into focus
