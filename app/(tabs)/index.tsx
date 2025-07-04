@@ -12,11 +12,12 @@
 // IMPORTS
 // ========================================
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert } from 'react-native';
+import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert, Dimensions, ActivityIndicator, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
+import ActionSheet, { SheetManager } from 'react-native-actions-sheet';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
 
 // ========================================
@@ -25,6 +26,9 @@ import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/cons
 
 const TAG = "[HomeScreen]";
 const MAP_ANIMATION_DURATION = 1000;
+
+// Get screen dimensions
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Map configuration
 const MAP_CONFIG = {
@@ -44,6 +48,7 @@ const HOME_ICON_SIZES = {
     checkbox: ICON_SIZES.xl,    // 24
     radio: ICON_SIZES.xl,       // 24
     toggle: ICON_SIZES.xxl,     // 32
+    back: 28,
 } as const;
 
 const HOME_COLORS = {
@@ -62,22 +67,23 @@ const ANIMATIONS = {
 
 const HOME_SPACING = {
     searchTop: 80,
-    searchHorizontal: SPACING.xl,          // 20
+    searchHorizontal: SPACING.xl,
     borderRadius: 30,
-    dropdownRadius: RADIUS.xl,             // 16
-    dropdownMarginTop: SPACING.sm,         // 8
-    iconPadding: SPACING.sm,               // 8
-    contentPadding: SPACING.xl,            // 20
-    sectionMargin: SPACING.xl,             // 20
-    optionPaddingVertical: SPACING.sm,     // 8
-    textMarginLeft: SPACING.md,            // 12
-    subSectionMarginTop: SPACING.sm,       // 8
-    subSectionMarginLeft: SPACING.xl,      // 20
-    subSectionPaddingLeft: SPACING.lg,     // 16
+    dropdownRadius: RADIUS.xl,
+    dropdownMarginTop: SPACING.sm,
+    iconPadding: SPACING.sm,
+    contentPadding: SPACING.xl,
+    sectionMargin: SPACING.xl,
+    optionPaddingVertical: SPACING.sm,
+    textMarginLeft: SPACING.md,
+    subSectionMarginTop: SPACING.sm,
+    subSectionMarginLeft: SPACING.xl,
+    subSectionPaddingLeft: SPACING.lg,
 } as const;
 
 // Layout constants
-const DROPDOWN_HEIGHT = 500;
+const DROPDOWN_HEIGHT_PERCENTAGE = 0.80;
+const DROPDOWN_HEIGHT = SCREEN_HEIGHT * DROPDOWN_HEIGHT_PERCENTAGE;
 const BORDER_WIDTH = 3;
 
 // Dynamic placeholder text options for engaging user experience
@@ -108,6 +114,7 @@ const PRICE_RANGE_VALUES = [1, 2, 3, 4] as const;
 // TYPE DEFINITIONS
 // ========================================
 interface TimeOfDay {
+    allDay: boolean;
     morning: boolean;
     afternoon: boolean;
     evening: boolean;
@@ -116,10 +123,11 @@ interface TimeOfDay {
 type Environment = 'indoor' | 'outdoor' | 'mixed';
 type GroupSize = 'solo' | 'duo' | 'group';
 type PriceRangeValue = 1 | 2 | 3 | 4;
-type SpecialOption = 'auto' | 'casual' | 'tourist' | 'wander' | 'date' | 'family';
+type SpecialOption = 'casual' | 'adventure' | 'tourist' | 'wander' | 'date' | 'family';
 
 interface SearchData {
     searchQuery: string;
+    location?: Location.LocationObject;
     filters: {
         timeOfDay: string[];
         environment: Environment;
@@ -127,7 +135,7 @@ interface SearchData {
         groupSize: GroupSize;
         planFood: boolean;
         priceRange?: PriceRangeValue;
-        specialOption: SpecialOption;
+        specialOption?: SpecialOption;
     };
     timestamp: string;
 }
@@ -144,7 +152,6 @@ export default function HomeScreen() {
     const glowAnim = useRef(new Animated.Value(0)).current;
     const placeholderAnim = useRef(new Animated.Value(0)).current;
     const dropdownAnim = useRef(new Animated.Value(0)).current;
-    const locationLoadingAnim = useRef(new Animated.Value(0)).current;
     
     // Map reference for programmatic control
     const mapRef = useRef<MapView>(null);
@@ -154,6 +161,7 @@ export default function HomeScreen() {
     const [displayedPlaceholder, setDisplayedPlaceholder] = useState<string>(SEARCH_PLACEHOLDER_OPTIONS[0]);
     const [inputValue, setInputValue] = useState("");
     const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+    const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     
@@ -171,6 +179,7 @@ export default function HomeScreen() {
 
     // Filter states - centralized filter management
     const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>({
+        allDay: false,
         morning: false,
         afternoon: false,
         evening: false,
@@ -180,10 +189,10 @@ export default function HomeScreen() {
     const [groupSize, setGroupSize] = useState<GroupSize>('solo');
     const [planFood, setPlanFood] = useState(false);
     const [priceRange, setPriceRange] = useState<PriceRangeValue>(1);
-    const [specialOption, setSpecialOption] = useState<SpecialOption>('auto');
+    const [specialOption, setSpecialOption] = useState<SpecialOption | undefined>(undefined);
 
     // ========================================
-    // ANIMATION EFFECTS
+    // EFFECTS & ANIMATIONS
     // ========================================
     
     /**
@@ -271,40 +280,6 @@ export default function HomeScreen() {
     }, [isDropdownVisible, dropdownAnim]);
 
     /**
-     * Location loading animation
-     * Continuous rotation animation for location loading indicator
-     */
-    useEffect(() => {
-        if (isLocationLoading) {
-            console.log(TAG, 'Starting location loading animation');
-            
-            // Reset animation value and start rotation
-            locationLoadingAnim.setValue(0);
-            
-            // Create looping rotation animation
-            const rotationAnimation = Animated.loop(
-                Animated.timing(locationLoadingAnim, {
-                    toValue: 1,
-                    duration: 1000, // 1 second per rotation
-                    useNativeDriver: true,
-                })
-            );
-            
-            rotationAnimation.start();
-            
-            // Return cleanup function
-            return () => {
-                console.log(TAG, 'Stopping location loading animation');
-                rotationAnimation.stop();
-                locationLoadingAnim.setValue(0);
-            };
-        } else {
-            // Reset animation when not loading
-            locationLoadingAnim.setValue(0);
-        }
-    }, [isLocationLoading, locationLoadingAnim]);
-
-    /**
      * Location permission and GPS detection
      * Requests location permission and gets user's current location
      */
@@ -368,7 +343,7 @@ export default function HomeScreen() {
                 setHasUserLocation(false);
                 Alert.alert(
                     'Location Error',
-                    'Unable to get your current location. Using default location (Toronto).',
+                    'Unable to get your current location. Using default location (Toronto, Canada).',
                     [{ text: 'OK' }]
                 );
             } finally {
@@ -380,7 +355,7 @@ export default function HomeScreen() {
     }, []);
 
     // ========================================
-    // LOCATION HELPERS
+    // LOCATION & EVENT HANDLERS
     // ========================================
     
     /**
@@ -448,10 +423,6 @@ export default function HomeScreen() {
         }
     };
 
-    // ========================================
-    // EVENT HANDLERS
-    // ========================================
-    
     /**
      * Handles search box press - ensures dropdown stays open
      */
@@ -471,18 +442,42 @@ export default function HomeScreen() {
     };
 
     /**
+     * Closes the dropdown and resets search focus
+     */
+    const closeDropdown = (): void => {
+        console.log(TAG, 'Closing dropdown via back arrow');
+        setIsDropdownVisible(false);
+        setIsSearchFocused(false);
+    };
+
+    /**
      * Handles time of day filter toggle
      * @param time - The time period to toggle
      */
     const toggleTimeOfDay = (time: keyof TimeOfDay): void => {
         console.log(TAG, 'Toggling time of day:', time);
         setTimeOfDay(prev => {
-            const newState = {
-                ...prev,
-                [time]: !prev[time]
-            };
-            console.log(TAG, 'New time of day state:', newState);
-            return newState;
+            if (time === 'allDay') {
+                // If toggling "All day", disable all other options when turning it on
+                const newAllDay = !prev.allDay;
+                const newState = {
+                    allDay: newAllDay,
+                    morning: newAllDay ? false : prev.morning,
+                    afternoon: newAllDay ? false : prev.afternoon,
+                    evening: newAllDay ? false : prev.evening,
+                };
+                console.log(TAG, 'All day toggled, new state:', newState);
+                return newState;
+            } else {
+                // If toggling specific time, disable "All day" and toggle the specific time
+                const newState = {
+                    ...prev,
+                    allDay: false,
+                    [time]: !prev[time]
+                };
+                console.log(TAG, 'Specific time toggled, new state:', newState);
+                return newState;
+            }
         });
     };
 
@@ -496,17 +491,55 @@ export default function HomeScreen() {
     };
 
     /**
+     * Handles Plan Food button press - shows custom action sheet with price options if not active, toggles off if active
+     */
+    const handlePlanFoodPress = (): void => {
+        if (planFood) {
+            // If Plan Food is already on, turn it off
+            console.log(TAG, 'Plan Food turned off');
+            setPlanFood(false);
+        } else {
+            // If Plan Food is off, show price selection action sheet
+            console.log(TAG, 'Plan Food pressed, showing price selection action sheet');
+            
+            setIsActionSheetVisible(true);
+            SheetManager.show('price-selection-sheet');
+        }
+    };
+
+    /**
+     * Handles price selection from the action sheet
+     */
+    const handlePriceSelection = (selectedPrice: PriceRangeValue): void => {
+        console.log(TAG, 'Price option selected:', selectedPrice, `(${PRICE_RANGE_MAP[selectedPrice]})`);
+        setPriceRange(selectedPrice);
+        setPlanFood(true);
+        setIsActionSheetVisible(false);
+        SheetManager.hide('price-selection-sheet');
+    };
+
+    /**
+     * Handles cancelling the price selection
+     */
+    const handlePriceCancel = (): void => {
+        console.log(TAG, 'Price selection cancelled');
+        setIsActionSheetVisible(false);
+        SheetManager.hide('price-selection-sheet');
+    };
+
+    /**
      * Resets all filters to their default values
      */
     const resetFilters = (): void => {
         console.log(TAG, 'Resetting all filters to defaults');
-        setTimeOfDay({ morning: false, afternoon: false, evening: false });
+        setTimeOfDay({ allDay: false, morning: false, afternoon: false, evening: false });
         setEnvironment('indoor');
         setPlanTransit(false);
         setGroupSize('solo');
         setPlanFood(false);
         setPriceRange(1);
-        setSpecialOption('auto');
+        setIsActionSheetVisible(false);
+        setSpecialOption(undefined);
     };
 
     /**
@@ -516,12 +549,13 @@ export default function HomeScreen() {
         console.log(TAG, 'Resetting search form');
         setInputValue("");
         setIsDropdownVisible(false);
+        setIsActionSheetVisible(false);
         setIsSearchFocused(false);
         resetFilters();
     };
 
     // ========================================
-    // DATA PROCESSING
+    // DATA COLLECTION & NAVIGATION
     // ========================================
     
     /**
@@ -529,12 +563,16 @@ export default function HomeScreen() {
      * @returns Formatted search data object
      */
     const collectFilterData = (): SearchData => {
-        const selectedTimeOfDay = Object.keys(timeOfDay).filter(
-            key => timeOfDay[key as keyof TimeOfDay]
-        );
+        // Handle time of day logic - if allDay is selected, use only that, otherwise use specific times
+        const selectedTimeOfDay = timeOfDay.allDay 
+            ? ['allDay']
+            : Object.keys(timeOfDay).filter(
+                key => key !== 'allDay' && timeOfDay[key as keyof TimeOfDay]
+            );
 
         const searchData = {
             searchQuery: inputValue.trim(),
+            ...(userLocation && { location: userLocation }),
             filters: {
                 timeOfDay: selectedTimeOfDay,
                 environment,
@@ -542,7 +580,7 @@ export default function HomeScreen() {
                 groupSize,
                 planFood,
                 ...(planFood && { priceRange }),
-                specialOption
+                ...(specialOption && { specialOption })
             },
             timestamp: new Date().toISOString()
         };
@@ -551,7 +589,8 @@ export default function HomeScreen() {
             ...searchData,
             filters: {
                 ...searchData.filters,
-                priceRange: searchData.filters.priceRange ? `${searchData.filters.priceRange} (${PRICE_RANGE_MAP[searchData.filters.priceRange]})` : undefined
+                priceRange: searchData.filters.priceRange ? `${searchData.filters.priceRange} (${PRICE_RANGE_MAP[searchData.filters.priceRange]})` : undefined,
+                specialOption: searchData.filters.specialOption || 'None selected'
             }
         });
 
@@ -596,7 +635,7 @@ export default function HomeScreen() {
     };
 
     // ========================================
-    // RENDER HELPERS
+    // UI HELPERS
     // ========================================
     
     /**
@@ -639,7 +678,7 @@ export default function HomeScreen() {
     );
 
     // ========================================
-    // COMPUTED STYLES
+    // DYNAMIC STYLES
     // ========================================
     
     /**
@@ -664,16 +703,6 @@ export default function HomeScreen() {
     // RENDER
     // ========================================
     
-    // Log current state for debugging
-    console.debug(TAG, 'Rendering HomeScreen with location state:', {
-        hasUserLocation,
-        isLocationLoading,
-        mapRegion: {
-            lat: mapRegion.latitude.toFixed(4),
-            lng: mapRegion.longitude.toFixed(4)
-        }
-    });
-
     return (
         <View style={styles.container}>
             {/* Search Container */}
@@ -681,6 +710,21 @@ export default function HomeScreen() {
                 {/* Search Input with Glow Effect */}
                 <Animated.View style={[styles.searchInputContainer, glowStyle]}>
                     <View style={styles.searchRow}>
+                        {/* Back Arrow (Conditional) */}
+                        {isDropdownVisible && (
+                            <TouchableOpacity 
+                                style={styles.iconButton} 
+                                onPress={closeDropdown}
+                                accessibilityLabel="Close filters"
+                            >
+                                <MaterialCommunityIcons 
+                                    name="arrow-left" 
+                                    size={HOME_ICON_SIZES.back} 
+                                    color={COLORS.secondary} 
+                                />
+                            </TouchableOpacity>
+                        )}
+
                         {/* Search Input Area */}
                         <TouchableOpacity 
                             style={styles.searchInputArea}
@@ -730,20 +774,6 @@ export default function HomeScreen() {
                             )}
                         </TouchableOpacity>
                         
-                        {/* Filter Button */}
-                        <TouchableOpacity 
-                            style={styles.iconButton} 
-                            onPress={toggleDropdown}
-                            disabled={isLoading}
-                            accessibilityLabel="Toggle filters"
-                        >
-                            <MaterialCommunityIcons 
-                                name="filter-outline" 
-                                size={HOME_ICON_SIZES.filter} 
-                                color={isLoading ? HOME_COLORS.loading : COLORS.secondary} 
-                            />
-                        </TouchableOpacity>
-                        
                         {/* Send Button */}
                         <TouchableOpacity 
                             style={styles.iconButton} 
@@ -775,128 +805,155 @@ export default function HomeScreen() {
                 >
                     <ScrollView 
                         style={styles.dropdownContent} 
-                        showsVerticalScrollIndicator={false}
+                        showsVerticalScrollIndicator={true}
                         contentContainerStyle={styles.dropdownScrollContent}
+                        indicatorStyle="default"
                     >
                         {/* Time of Day Section */}
                         <View style={styles.filterSection}>
                             <Text style={styles.filterTitle}>Time of Day</Text>
-                            {(['morning', 'afternoon', 'evening'] as const).map((time) => (
-                                <TouchableOpacity 
-                                    key={time}
-                                    style={styles.filterOption} 
-                                    onPress={() => toggleTimeOfDay(time)}
-                                >
-                                    {renderCheckbox(timeOfDay[time])}
-                                    <Text style={styles.filterText}>
-                                        {time.charAt(0).toUpperCase() + time.slice(1)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            
+                            {/* All Day Toggle */}
+                            <TouchableOpacity 
+                                style={styles.filterOption} 
+                                onPress={() => toggleTimeOfDay('allDay')}
+                            >
+                                {renderToggle(timeOfDay.allDay)}
+                                <Text style={styles.filterText}>All Day</Text>
+                            </TouchableOpacity>
+                            
+                            {/* Specific Time Options */}
+                            <View style={styles.threeColumnContainer}>
+                                {(['morning', 'afternoon', 'evening'] as const).map((time) => (
+                                    <View key={time} style={styles.columnItem}>
+                                        <TouchableOpacity 
+                                            style={timeOfDay.allDay ? styles.filterOptionDisabled : styles.filterOption} 
+                                            onPress={() => !timeOfDay.allDay && toggleTimeOfDay(time)}
+                                            disabled={timeOfDay.allDay}
+                                        >
+                                            {renderCheckbox(timeOfDay[time])}
+                                            <Text style={timeOfDay.allDay ? styles.filterTextDisabled : styles.filterText}>
+                                                {time.charAt(0).toUpperCase() + time.slice(1)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
                         </View>
 
                         {/* Environment Section */}
                         <View style={styles.filterSection}>
                             <Text style={styles.filterTitle}>Environment</Text>
-                            {(['indoor', 'outdoor', 'mixed'] as const).map((env) => (
-                                <TouchableOpacity 
-                                    key={env}
-                                    style={styles.filterOption} 
-                                    onPress={() => {
-                                        console.log(TAG, 'Environment changed to:', env);
-                                        setEnvironment(env);
-                                    }}
-                                >
-                                    {renderRadio(environment === env)}
-                                    <Text style={styles.filterText}>
-                                        {env.charAt(0).toUpperCase() + env.slice(1)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            <View style={styles.threeColumnContainer}>
+                                {(['indoor', 'outdoor', 'mixed'] as const).map((env) => (
+                                    <View key={env} style={styles.columnItem}>
+                                        <TouchableOpacity 
+                                            style={styles.filterOption} 
+                                            onPress={() => {
+                                                console.log(TAG, 'Environment changed to:', env);
+                                                setEnvironment(env);
+                                            }}
+                                        >
+                                            {renderRadio(environment === env)}
+                                            <Text style={styles.filterText}>
+                                                {env.charAt(0).toUpperCase() + env.slice(1)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
                         </View>
 
-                        {/* Plan Transit Section */}
+                        {/* Plan Options Section - Side by Side */}
                         <View style={styles.filterSection}>
-                            <TouchableOpacity 
-                                style={styles.filterOption} 
-                                onPress={() => {
-                                    console.log(TAG, 'Plan Transit toggled to:', !planTransit);
-                                    setPlanTransit(!planTransit);
-                                }}
-                            >
-                                {renderToggle(planTransit)}
-                                <Text style={styles.filterText}>Plan Transit</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.filterTitle}>Planning Options</Text>
+                            <View style={styles.sideBySideContainer}>
+                                <View style={styles.toggleContainer}>
+                                    <TouchableOpacity 
+                                        style={styles.filterOption} 
+                                        onPress={() => {
+                                            console.log(TAG, 'Plan Transit toggled to:', !planTransit);
+                                            setPlanTransit(!planTransit);
+                                        }}
+                                    >
+                                        {renderToggle(planTransit)}
+                                        <Text style={styles.filterText}>Plan Transit</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.toggleContainer}>
+                                    <TouchableOpacity 
+                                        style={styles.filterOption} 
+                                        onPress={handlePlanFoodPress}
+                                    >
+                                        {renderToggle(planFood)}
+                                        <Text style={styles.filterText}>
+                                            Plan Food {planFood ? `(${PRICE_RANGE_MAP[priceRange]})` : ''}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         </View>
 
                         {/* Group Size Section */}
                         <View style={styles.filterSection}>
                             <Text style={styles.filterTitle}>Group Size</Text>
-                            {(['solo', 'duo', 'group'] as const).map((size) => (
-                                <TouchableOpacity 
-                                    key={size}
-                                    style={styles.filterOption} 
-                                    onPress={() => {
-                                        console.log(TAG, 'Group size changed to:', size);
-                                        setGroupSize(size);
-                                    }}
-                                >
-                                    {renderRadio(groupSize === size)}
-                                    <Text style={styles.filterText}>
-                                        {size.charAt(0).toUpperCase() + size.slice(1)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        {/* Plan Food Section */}
-                        <View style={styles.filterSection}>
-                            <TouchableOpacity 
-                                style={styles.filterOption} 
-                                onPress={() => {
-                                    console.log(TAG, 'Plan Food toggled to:', !planFood);
-                                    setPlanFood(!planFood);
-                                }}
-                            >
-                                {renderToggle(planFood)}
-                                <Text style={styles.filterText}>Plan Food</Text>
-                            </TouchableOpacity>
-
-                            {/* Price Range (Conditional) */}
-                            {planFood && (
-                                <View style={styles.subSection}>
-                                    <Text style={styles.subTitle}>Price Range</Text>
-                                    {PRICE_RANGE_VALUES.map((value) => (
+                            <View style={styles.threeColumnContainer}>
+                                {(['solo', 'duo', 'group'] as const).map((size) => (
+                                    <View key={size} style={styles.columnItem}>
                                         <TouchableOpacity 
-                                            key={value}
                                             style={styles.filterOption} 
-                                            onPress={() => handlePriceRangeChange(value)}
+                                            onPress={() => {
+                                                console.log(TAG, 'Group size changed to:', size);
+                                                setGroupSize(size);
+                                            }}
                                         >
-                                            {renderRadio(priceRange === value)}
-                                            <Text style={styles.filterText}>{PRICE_RANGE_MAP[value]}</Text>
+                                            {renderRadio(groupSize === size)}
+                                            <Text style={styles.filterText}>
+                                                {size.charAt(0).toUpperCase() + size.slice(1)}
+                                            </Text>
                                         </TouchableOpacity>
-                                    ))}
-                                </View>
-                            )}
+                                    </View>
+                                ))}
+                            </View>
                         </View>
 
                         {/* Special Options Section */}
                         <View style={styles.filterSection}>
                             <Text style={styles.filterTitle}>Special Options</Text>
-                            {(['Auto', 'Casual', 'Tourist', 'Wander', 'Date', 'Family'] as const).map((option) => (
-                                <TouchableOpacity 
-                                    key={option}
-                                    style={styles.filterOption} 
-                                    onPress={() => {
-                                        const newOption = option.toLowerCase() as SpecialOption;
-                                        console.log(TAG, 'Special option changed to:', newOption);
-                                        setSpecialOption(newOption);
-                                    }}
-                                >
-                                    {renderRadio(specialOption === option.toLowerCase())}
-                                    <Text style={styles.filterText}>{option}</Text>
-                                </TouchableOpacity>
-                            ))}
+                            <View style={styles.threeColumnContainer}>
+                                {(['Casual', 'Adventure', 'Tourist'] as const).map((option) => (
+                                    <View key={option} style={styles.columnItem}>
+                                        <TouchableOpacity 
+                                            style={styles.filterOption} 
+                                            onPress={() => {
+                                                const newOption = option.toLowerCase() as SpecialOption;
+                                                console.log(TAG, 'Special option changed to:', newOption);
+                                                setSpecialOption(newOption);
+                                            }}
+                                        >
+                                            {renderCheckbox(specialOption === option.toLowerCase())}
+                                            <Text style={styles.filterText}>{option}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                            <View style={styles.threeColumnContainer}>
+                                {(['Wander', 'Date', 'Family'] as const).map((option) => (
+                                    <View key={option} style={styles.columnItem}>
+                                        <TouchableOpacity 
+                                            style={styles.filterOption} 
+                                            onPress={() => {
+                                                const newOption = option.toLowerCase() as SpecialOption;
+                                                console.log(TAG, 'Special option changed to:', newOption);
+                                                setSpecialOption(newOption);
+                                            }}
+                                        >
+                                            {renderCheckbox(specialOption === option.toLowerCase())}
+                                            <Text style={styles.filterText}>{option}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
                         </View>
                     </ScrollView>
                 </Animated.View>
@@ -930,28 +987,55 @@ export default function HomeScreen() {
                     accessibilityLabel="Refresh location"
                     accessibilityRole="button"
                 >
-                    <Animated.View
-                        style={{
-                            transform: [
-                                {
-                                    rotate: isLocationLoading 
-                                        ? locationLoadingAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: ['0deg', '360deg'],
-                                        })
-                                        : '0deg',
-                                },
-                            ],
-                        }}
-                    >
-                        <MaterialCommunityIcons 
-                            name={isLocationLoading ? "loading" : hasUserLocation ? "crosshairs-gps" : "crosshairs"} 
-                            size={HOME_ICON_SIZES.filter} 
-                            color={isLocationLoading ? COLORS.primary : hasUserLocation ? COLORS.primary : COLORS.secondary} 
+                    {isLocationLoading ? (
+                        <ActivityIndicator 
+                            size="large" 
+                            color={COLORS.primary} 
                         />
-                    </Animated.View>
+                    ) : (
+                        <MaterialCommunityIcons 
+                            name={hasUserLocation ? "crosshairs-gps" : "crosshairs"} 
+                            size={HOME_ICON_SIZES.filter} 
+                            color={hasUserLocation ? COLORS.primary : COLORS.secondary} 
+                        />
+                    )}
                 </TouchableOpacity>
             </View>
+
+            {/* Price Selection Action Sheet */}
+            <ActionSheet id="price-selection-sheet" gestureEnabled={true}>
+                <View style={styles.actionSheetContainer}>
+                    <Text style={styles.actionSheetTitle}>Select Price Range</Text>
+                    
+                    <FlatList
+                        data={PRICE_RANGE_VALUES}
+                        keyExtractor={(item) => item.toString()}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                style={styles.priceOptionItem}
+                                onPress={() => {
+                                    handlePriceSelection(item);
+                                }}
+                            >
+                                <Text style={styles.priceOptionText}>{PRICE_RANGE_MAP[item]}</Text>
+                                <Text style={styles.priceDescription}>
+                                    {item === 1 ? 'Budget-friendly' : 
+                                     item === 2 ? 'Moderate' : 
+                                     item === 3 ? 'Premium' : 'Luxury'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        showsVerticalScrollIndicator={false}
+                    />
+                    
+                    <TouchableOpacity
+                        style={styles.cancelButton}
+                        onPress={handlePriceCancel}
+                    >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                </View>
+            </ActionSheet>
         </View>
     );
 }
@@ -976,7 +1060,7 @@ const styles = StyleSheet.create({
         top: HOME_SPACING.searchTop,
         left: HOME_SPACING.searchHorizontal,
         right: HOME_SPACING.searchHorizontal,
-        zIndex: 1,
+        zIndex: 10,
     },
     searchInputContainer: {
         backgroundColor: COLORS.white,
@@ -1025,6 +1109,18 @@ const styles = StyleSheet.create({
         marginTop: HOME_SPACING.dropdownMarginTop,
         ...SHADOWS.card,
         overflow: 'hidden',
+        // Enhanced modal-like appearance
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        // Stronger shadow for more prominence
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 8,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
     },
     dropdownContent: {
         padding: HOME_SPACING.contentPadding,
@@ -1048,10 +1144,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: HOME_SPACING.optionPaddingVertical,
     },
+    filterOptionDisabled: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: HOME_SPACING.optionPaddingVertical,
+        opacity: 0.4,
+    },
     filterText: {
         marginLeft: HOME_SPACING.textMarginLeft,
         fontSize: TYPOGRAPHY.fontSize.base,
         color: COLORS.text,
+    },
+    filterTextDisabled: {
+        marginLeft: HOME_SPACING.textMarginLeft,
+        fontSize: TYPOGRAPHY.fontSize.base,
+        color: COLORS.lightText,
     },
     
     // Sub-sections
@@ -1075,7 +1182,7 @@ const styles = StyleSheet.create({
         bottom: 30,
         right: 20,
         alignItems: 'flex-end',
-        zIndex: 1,
+        zIndex: 5,
     },
     locationButton: {
         backgroundColor: COLORS.white,
@@ -1090,5 +1197,81 @@ const styles = StyleSheet.create({
     },
     locationButtonLoading: {
         opacity: 0.7,
+    },
+    
+    // 3-Column Layout
+    threeColumnContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginTop: SPACING.xs,
+    },
+    columnItem: {
+        width: '30%',
+        marginBottom: SPACING.sm,
+    },
+    
+    // Side-by-side toggles
+    sideBySideContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+    },
+    toggleContainer: {
+        flex: 1,
+        marginHorizontal: SPACING.xs,
+    },
+
+    // Price Selection Action Sheet
+    actionSheetContainer: {
+        backgroundColor: COLORS.white,
+        paddingTop: SPACING.md,
+        paddingHorizontal: SPACING.xl,
+        paddingBottom: SPACING.xxl,
+        borderTopLeftRadius: RADIUS.xl,
+        borderTopRightRadius: RADIUS.xl,
+    },
+    actionSheetTitle: {
+        fontSize: TYPOGRAPHY.fontSize.xl,
+        fontWeight: TYPOGRAPHY.fontWeight.bold,
+        marginBottom: SPACING.lg,
+        color: COLORS.text,
+        textAlign: 'center',
+    },
+    priceOptionItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: SPACING.lg,
+        paddingHorizontal: SPACING.md,
+        marginVertical: SPACING.xs,
+        backgroundColor: COLORS.background,
+        borderRadius: RADIUS.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    priceOptionText: {
+        fontSize: TYPOGRAPHY.fontSize.xl,
+        fontWeight: TYPOGRAPHY.fontWeight.bold,
+        color: COLORS.text,
+    },
+    priceDescription: {
+        fontSize: TYPOGRAPHY.fontSize.base,
+        color: COLORS.lightText,
+        fontWeight: TYPOGRAPHY.fontWeight.medium,
+    },
+    cancelButton: {
+        backgroundColor: COLORS.lightText,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.xl,
+        borderRadius: RADIUS.lg,
+        alignItems: 'center',
+        marginTop: SPACING.lg,
+    },
+    cancelButtonText: {
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.bold,
+        color: COLORS.white,
     },
 });
