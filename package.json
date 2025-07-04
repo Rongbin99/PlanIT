@@ -21,6 +21,7 @@
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.1.6",
     "expo-image-picker": "~16.1.4",
+    "expo-linear-gradient": "~14.1.5",
     "expo-linking": "~7.1.4",
     "expo-location": "^18.1.5",
     "expo-router": "~5.0.5",
@@ -32,6 +33,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
+    "react-native-actions-sheet": "^0.9.7",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-maps": "1.20.1",
     "react-native-reanimated": "~3.17.4",
@@ -39,8 +41,7 @@
     "react-native-screens": "~4.10.0",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
-    "react-social-icons": "^6.24.0",
-    "expo-linear-gradient": "~14.1.5"
+    "react-social-icons": "^6.24.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
