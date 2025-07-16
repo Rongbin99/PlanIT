@@ -1,26 +1,52 @@
 /**
  * API Configuration Constants
  * 
- * Centralized configuration for backend API endpoints across different environments.
- * Update the BACKEND_URL based on your deployment target and testing environment.
+ * Centralized configuration for backend API endpoints with automatic platform detection.
+ * Automatically selects the correct backend URL based on the platform:
+ * - iOS Simulator: localhost:3000
+ * - Android Emulator: 10.0.2.2:3000 (maps to host machine's localhost)
+ * - Other platforms: network IP for physical devices/production
  * 
  * @author Rongbin Gu (@rongbin99)
  */
+
+import { Platform } from 'react-native';
 
 // ========================================
 // ENVIRONMENT CONFIGURATION
 // ========================================
 
 /**
- * Backend URL configuration for different environments
- * 
- * Choose the appropriate URL based on your testing setup:
+ * Get backend URL based on platform:
  * - iOS Simulator: use localhost:3000 
  * - Android Emulator: use 10.0.2.2:3000 (maps to host machine's localhost)
  * - Physical Device: use your network IP (e.g., 192.168.X.X:3000)
- * - Production: use your deployed API URL (e.g., AWS Lambda URL)
+ * - Production: use the API URL (e.g., AWS EC2 URL or GCP/Azure) <-- COMING SOON
  */
-export const BACKEND_URL = 'http://10.0.2.2:3000';
+const getBackendUrl = (): string => {
+    let url: string;
+    const TAG = '[ApiConfig]';
+    
+    if (Platform.OS === 'ios') {
+        url = 'http://localhost:3000';
+        console.log(TAG, 'Platform detected: iOS - Using localhost backend');
+    } else if (Platform.OS === 'android') {
+        url = 'http://10.0.2.2:3000';
+        console.log(TAG, 'Platform detected: Android - Using emulator backend (10.0.2.2)');
+    } else {
+        // Fallback for web, physical devices, or other platforms
+        url = 'http://192.168.X.X:3000'; // Replace with your network IP
+        console.log(TAG, `Platform detected: ${Platform.OS} - Using network IP backend`);
+    }
+    
+    console.log(TAG, `Backend URL set to: ${url}`);
+    return url;
+};
+
+/**
+ * Backend URL automatically selected based on platform
+ */
+export const BACKEND_URL = getBackendUrl(); // Change to override the backend URL for production
 
 // ========================================
 // API ENDPOINTS
