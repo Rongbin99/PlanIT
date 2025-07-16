@@ -231,8 +231,6 @@ export default function HomeScreen() {
             const interval = setInterval(() => {
                 // Only animate if input is empty and not focused
                 if (inputValue.length === 0 && !isSearchFocused) {
-                    console.log(TAG, 'Animating placeholder to random index');
-                    
                     // Animate out (slide up)
                     Animated.timing(placeholderAnim, {
                         toValue: -ANIMATIONS.placeholderOffset,
