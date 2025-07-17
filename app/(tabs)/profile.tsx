@@ -12,10 +12,12 @@
 import React, { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import { StyleSheet, TouchableOpacity, View, Linking, Alert } from 'react-native';
+import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { BlurView } from 'expo-blur';
+import AppearanceActionSheet, { showAppearanceSheet } from '@/components/AppearanceActionSheet';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES, SHADOWS, PROFILE_LAYOUT } from '@/constants/DesignTokens';
@@ -240,7 +242,22 @@ export default function ProfileScreen() {
 
     const handleSettingPress = (settingName: string) => {
         console.log(TAG, `Setting pressed: ${settingName}`);
-        // TODO: Navigate to respective setting screen
+        
+        switch (settingName) {
+            case 'Change Password':
+                router.push('/change-password' as any);
+                break;
+            case 'Account':
+                router.push('/account' as any);
+                break;
+            case 'Appearance':
+                showAppearanceSheet();
+                break;
+            default:
+                // TODO: Implement other settings screens
+                console.log(TAG, `Setting "${settingName}" not implemented yet`);
+                break;
+        }
     };
 
     console.log(TAG, 'Rendering ProfileScreen with current year:', new Date().getFullYear());
@@ -301,17 +318,6 @@ export default function ProfileScreen() {
                 
                 <TouchableOpacity 
                     style={styles.settingItem}
-                    onPress={() => handleSettingPress('Change Password')}
-                    accessibilityLabel="Change password settings"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="lock-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Change Password</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                    style={styles.settingItem}
                     onPress={() => handleSettingPress('Account')}
                     accessibilityLabel="Account settings"
                     accessibilityRole="button"
@@ -323,13 +329,24 @@ export default function ProfileScreen() {
 
                 <TouchableOpacity 
                     style={styles.settingItem}
+                    onPress={() => handleSettingPress('Change Password')}
+                    accessibilityLabel="Change password settings"
+                    accessibilityRole="button"
+                >
+                    <MaterialCommunityIcons name="lock-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    <ThemedText style={styles.settingText}>Change Password</ThemedText>
+                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.settingItem}
                     onPress={() => handleSettingPress('Appearance')}
                     accessibilityLabel="Appearance settings"
                     accessibilityRole="button"
                 >
                     <MaterialCommunityIcons name="palette-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
                     <ThemedText style={styles.settingText}>Appearance</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    <MaterialCommunityIcons name="chevron-down" size={ICON_SIZES.xl} color={COLORS.lightText} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -340,7 +357,7 @@ export default function ProfileScreen() {
                 >
                     <MaterialCommunityIcons name="star-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
                     <ThemedText style={styles.settingText}>Rate Us</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -351,7 +368,7 @@ export default function ProfileScreen() {
                 >
                     <MaterialCommunityIcons name="update" size={ICON_SIZES.xl} color={COLORS.lightText} />
                     <ThemedText style={styles.settingText}>Check for Updates</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -373,7 +390,7 @@ export default function ProfileScreen() {
                 >
                     <MaterialCommunityIcons name="information-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
                     <ThemedText style={styles.settingText}>Legal & About</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
                 </TouchableOpacity>
             </ThemedView>
 
@@ -381,6 +398,13 @@ export default function ProfileScreen() {
             <ThemedText style={styles.copyright}>
                 &copy; {new Date().getFullYear()} PlanIT. Made by Rongbin99.
             </ThemedText>
+
+            {/* Appearance Theme Selection Action Sheet */}
+            <AppearanceActionSheet 
+                onThemeChange={(theme) => {
+                    console.log(TAG, 'Theme changed to:', theme);
+                }}
+            />
         </ThemedView>
     );
 }
