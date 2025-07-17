@@ -15,7 +15,6 @@ import { View, StyleSheet, TouchableOpacity, FlatList, Text, Alert } from 'react
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import ActionSheet, { SheetManager } from 'react-native-actions-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES } from '@/constants/DesignTokens';
 
 // ========================================
@@ -220,15 +219,6 @@ export default function AppearanceActionSheet({ onThemeChange }: AppearanceActio
     return (
         <ActionSheet id={SHEET_ID} gestureEnabled={true}>
             <View style={styles.actionSheetContainer}>
-                <View style={styles.actionSheetHeader}>
-                    <ThemedText type="title" style={styles.actionSheetTitle}>
-                        Choose Theme
-                    </ThemedText>
-                    <ThemedText style={styles.actionSheetSubtitle}>
-                        Select your preferred appearance
-                    </ThemedText>
-                </View>
-                
                 <FlatList
                     data={THEME_OPTIONS}
                     keyExtractor={(item) => item.id}
@@ -253,18 +243,6 @@ const styles = StyleSheet.create({
         paddingBottom: SPACING.xxl,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-    },
-    actionSheetHeader: {
-        alignItems: 'center',
-        marginBottom: SPACING.lg,
-    },
-    actionSheetTitle: {
-        marginBottom: SPACING.xs,
-    },
-    actionSheetSubtitle: {
-        fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.lightText,
-        textAlign: 'center',
     },
     themeOptionsList: {
         maxHeight: 300,
