@@ -60,6 +60,11 @@ export const API_ENDPOINTS = {
     PLAN_GENERATION: '/api/plan',
     SAVE_CHAT: '/api/chat',
     DELETE_CHAT: '/api/chat',
+    USER_SIGNUP: '/api/user/signup',
+    USER_LOGIN: '/api/user/login',
+    USER_PROFILE: '/api/user/profile',
+    USER_PASSWORD: '/api/user/password',
+    USER_STATS: '/api/user/stats',
 } as const;
 
 /**
@@ -70,6 +75,11 @@ export const API_URLS = {
     PLAN_GENERATION: `${BACKEND_URL}${API_ENDPOINTS.PLAN_GENERATION}`,
     SAVE_CHAT: `${BACKEND_URL}${API_ENDPOINTS.SAVE_CHAT}`,
     DELETE_CHAT: (chatId: string) => `${BACKEND_URL}${API_ENDPOINTS.DELETE_CHAT}/${chatId}`,
+    USER_SIGNUP: `${BACKEND_URL}${API_ENDPOINTS.USER_SIGNUP}`,
+    USER_LOGIN: `${BACKEND_URL}${API_ENDPOINTS.USER_LOGIN}`,
+    USER_PROFILE: `${BACKEND_URL}${API_ENDPOINTS.USER_PROFILE}`,
+    USER_PASSWORD: `${BACKEND_URL}${API_ENDPOINTS.USER_PASSWORD}`,
+    USER_STATS: `${BACKEND_URL}${API_ENDPOINTS.USER_STATS}`,
 } as const;
 
 // ========================================
