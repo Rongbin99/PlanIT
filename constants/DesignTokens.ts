@@ -25,6 +25,10 @@ export const COLORS = {
     black: '#000000',
     border: '#e0e0e0',
     accent: '#e3f2fd',
+    error: '#e74c3c',
+    errorBackground: '#fdf2f2',
+    surface: '#ffffff',
+    disabled: '#cccccc',
 } as const;
 
 // ========================================
@@ -87,6 +91,7 @@ export const RADIUS = {
     lg: 12,
     xl: 16,
     xxl: 24,
+    full: 9999,
 } as const;
 
 // ========================================
@@ -113,6 +118,13 @@ export const ICON_SIZES = {
  * Shadow configurations for consistent elevation
  */
 export const SHADOWS = {
+    sm: {
+        shadowColor: COLORS.text,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 1,
+    },
     card: {
         shadowColor: COLORS.text,
         shadowOffset: { width: 0, height: 1 },
