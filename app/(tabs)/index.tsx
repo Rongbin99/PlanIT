@@ -189,7 +189,7 @@ export default function HomeScreen() {
     const [groupSize, setGroupSize] = useState<GroupSize>('solo');
     const [planFood, setPlanFood] = useState(false);
     const [priceRange, setPriceRange] = useState<PriceRangeValue>(1);
-    const [specialOption, setSpecialOption] = useState<SpecialOption | undefined>(undefined);
+    const [specialOptions, setSpecialOptions] = useState<SpecialOption[]>([]);
 
     // ========================================
     // EFFECTS & ANIMATIONS
@@ -563,7 +563,7 @@ export default function HomeScreen() {
         setPlanFood(false);
         setPriceRange(1);
         setIsActionSheetVisible(false);
-        setSpecialOption(undefined);
+        setSpecialOptions([]);
     };
 
     /**
@@ -604,7 +604,7 @@ export default function HomeScreen() {
                 groupSize,
                 planFood,
                 ...(planFood && { priceRange }),
-                ...(specialOption && { specialOption })
+                ...(specialOptions.length > 0 && { specialOptions }),
             },
             timestamp: new Date().toISOString()
         };
@@ -614,7 +614,9 @@ export default function HomeScreen() {
             filters: {
                 ...searchData.filters,
                 priceRange: searchData.filters.priceRange ? `${searchData.filters.priceRange} (${PRICE_RANGE_MAP[searchData.filters.priceRange]})` : undefined,
-                specialOption: searchData.filters.specialOption || 'None selected'
+                specialOptions: searchData.filters.specialOptions?.length
+                  ? searchData.filters.specialOptions.join(', ')
+                  : 'None selected'
             }
         });
 
@@ -968,35 +970,20 @@ export default function HomeScreen() {
                         <View style={styles.filterSection}>
                             <Text style={styles.filterTitle}>Special Options</Text>
                             <View style={styles.threeColumnContainer}>
-                                {(['Casual', 'Adventure', 'Tourist'] as const).map((option) => (
+                                {(['casual', 'adventure', 'tourist', 'wander', 'date', 'family'] as const).map((option) => (
                                     <View key={option} style={styles.columnItem}>
                                         <TouchableOpacity 
                                             style={styles.filterOption} 
                                             onPress={() => {
-                                                const newOption = option.toLowerCase() as SpecialOption;
-                                                console.log(TAG, 'Special option changed to:', newOption);
-                                                setSpecialOption(newOption);
+                                                setSpecialOptions(prev =>
+                                                    prev.includes(option)
+                                                        ? prev.filter(o => o !== option)
+                                                        : [...prev, option]
+                                                );
                                             }}
                                         >
-                                            {renderCheckbox(specialOption === option.toLowerCase())}
-                                            <Text style={styles.filterText}>{option}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                            <View style={styles.threeColumnContainer}>
-                                {(['Wander', 'Date', 'Family'] as const).map((option) => (
-                                    <View key={option} style={styles.columnItem}>
-                                        <TouchableOpacity 
-                                            style={styles.filterOption} 
-                                            onPress={() => {
-                                                const newOption = option.toLowerCase() as SpecialOption;
-                                                console.log(TAG, 'Special option changed to:', newOption);
-                                                setSpecialOption(newOption);
-                                            }}
-                                        >
-                                            {renderCheckbox(specialOption === option.toLowerCase())}
-                                            <Text style={styles.filterText}>{option}</Text>
+                                            {renderCheckbox(specialOptions.includes(option))}
+                                            <Text style={styles.filterText}>{option.charAt(0).toUpperCase() + option.slice(1)}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ))}
