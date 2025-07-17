@@ -16,6 +16,8 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
+import { useAuth } from '@/contexts/AuthContext';
+import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -29,6 +31,12 @@ const TAG = "[ChangePasswordScreen]";
 
 export default function ChangePasswordScreen() {
     console.log(TAG, 'ChangePasswordScreen component initialized');
+
+    // ========================================
+    // HOOKS & CONTEXT
+    // ========================================
+    
+    const { token } = useAuth();
 
     // ========================================
     // STATE MANAGEMENT
@@ -114,28 +122,43 @@ export default function ChangePasswordScreen() {
         try {
             setIsLoading(true);
             
-            // TODO: Implement actual password change logic with backend
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            console.log(TAG, 'Password change successful');
-            
-            Alert.alert(
-                'Success',
-                'Your password has been changed successfully.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            // Clear form and go back
-                            setCurrentPassword('');
-                            setNewPassword('');
-                            setConfirmPassword('');
-                            router.back();
+            const response = await fetch(API_URLS.USER_PASSWORD, {
+                method: 'PUT',
+                headers: {
+                    ...DEFAULT_HEADERS,
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                console.log(TAG, 'Password change successful');
+                
+                Alert.alert(
+                    'Success',
+                    'Your password has been changed successfully.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => {
+                                // Clear form and go back
+                                setCurrentPassword('');
+                                setNewPassword('');
+                                setConfirmPassword('');
+                                router.back();
+                            }
                         }
-                    }
-                ]
-            );
+                    ]
+                );
+            } else {
+                console.warn(TAG, 'Password change failed:', result.message);
+                Alert.alert('Error', result.message || 'Failed to change password. Please try again.');
+            }
         } catch (error) {
             console.error(TAG, 'Error changing password:', error);
             Alert.alert('Error', 'Failed to change password. Please try again.');
