@@ -1,7 +1,7 @@
 /**
  * AccountScreen Component
  * 
- * Account settings screen with Name, Email, Location fields and logout functionality.
+ * Account settings screen with Name, Email fields and logout functionality.
  * 
  * @author Rongbin Gu (@rongbin99)
  */
@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -24,8 +25,6 @@ import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/cons
 
 const TAG = "[AccountScreen]";
 const ACCOUNT_DATA_KEY = '@planit_account_data';
-const AUTH_TOKEN_KEY = '@planit_auth_token';
-const MEMBER_SINCE_KEY = '@planit_member_since';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -33,7 +32,7 @@ const MEMBER_SINCE_KEY = '@planit_member_since';
 
 interface AccountData {
     name: string;
-    location: string;
+    email: string;
 }
 
 // ========================================
@@ -44,100 +43,104 @@ export default function AccountScreen() {
     console.log(TAG, 'AccountScreen component initialized');
 
     // ========================================
+    // HOOKS & CONTEXT
+    // ========================================
+    
+    const { user, isAuthenticated, logout, updateProfile } = useAuth();
+
+    // ========================================
     // STATE MANAGEMENT
     // ========================================
     
     const [name, setName] = useState('');
-    const [location, setLocation] = useState('');
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [memberSince, setMemberSince] = useState('');
+    const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Track original values to detect changes
+    const [originalName, setOriginalName] = useState('');
+    const [originalEmail, setOriginalEmail] = useState('');
 
     // ========================================
     // EFFECTS
     // ========================================
 
     useEffect(() => {
-        checkAuthStatus();
-    }, []);
+        loadAccountData();
+    }, [user]);
 
     // ========================================
     // DATA MANAGEMENT
     // ========================================
 
-    const checkAuthStatus = async (): Promise<void> => {
+    const loadAccountData = async (): Promise<void> => {
         try {
-            console.log(TAG, 'Checking authentication status');
+            console.log(TAG, 'Loading account data');
             setIsLoading(true);
             
-            const authToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-            if (authToken) {
-                setIsLoggedIn(true);
-                await loadAccountData();
-                await loadMemberSince();
+            if (isAuthenticated && user) {
+                // Use data from auth context
+                const userName = user.name || '';
+                const userEmail = user.email || '';
+                setName(userName);
+                setEmail(userEmail);
+                setOriginalName(userName);
+                setOriginalEmail(userEmail);
             } else {
-                setIsLoggedIn(false);
-                console.log(TAG, 'User not logged in');
+                // Load local data for non-authenticated users
+                const savedData = await AsyncStorage.getItem(ACCOUNT_DATA_KEY);
+                if (savedData) {
+                    const accountData: AccountData = JSON.parse(savedData);
+                    const localName = accountData.name || '';
+                    const localEmail = accountData.email || '';
+                    setName(localName);
+                    setEmail(localEmail);
+                    setOriginalName(localName);
+                    setOriginalEmail(localEmail);
+                }
             }
         } catch (error) {
-            console.error(TAG, 'Error checking auth status:', error);
-            setIsLoggedIn(false);
+            console.error(TAG, 'Error loading account data:', error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const loadAccountData = async (): Promise<void> => {
-        try {
-            console.log(TAG, 'Loading account data from AsyncStorage');
-            
-            const savedData = await AsyncStorage.getItem(ACCOUNT_DATA_KEY);
-            if (savedData) {
-                const accountData: AccountData = JSON.parse(savedData);
-                setName(accountData.name || '');
-                setLocation(accountData.location || '');
-                console.log(TAG, 'Account data loaded successfully');
-            }
-        } catch (error) {
-            console.error(TAG, 'Error loading account data:', error);
-        }
-    };
-
-    const loadMemberSince = async (): Promise<void> => {
-        try {
-            const savedMemberSince = await AsyncStorage.getItem(MEMBER_SINCE_KEY);
-            if (savedMemberSince) {
-                setMemberSince(savedMemberSince);
-            } else {
-                // Set default member since date if not found
-                const defaultDate = 'January 2024';
-                setMemberSince(defaultDate);
-                await AsyncStorage.setItem(MEMBER_SINCE_KEY, defaultDate);
-            }
-        } catch (error) {
-            console.error(TAG, 'Error loading member since date:', error);
-        }
-    };
-
     const saveAccountData = async (): Promise<void> => {
         try {
-            console.log(TAG, 'Saving account data to AsyncStorage');
+            console.log(TAG, 'Saving account data');
             setIsSaving(true);
             
-            const accountData: AccountData = {
-                name: name.trim(),
-                location: location.trim(),
-            };
-            
-            await AsyncStorage.setItem(ACCOUNT_DATA_KEY, JSON.stringify(accountData));
-            
-            // TODO: Also sync with backend API
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            console.log(TAG, 'Account data saved successfully');
-            Alert.alert('Success', 'Your account information has been updated.');
+            if (isAuthenticated) {
+                // Use auth context to update profile
+                const success = await updateProfile({
+                    name: name.trim(),
+                    email: email.trim()
+                });
+                
+                if (success) {
+                    console.log(TAG, 'Profile updated successfully');
+                    // Update original values to reflect the saved state
+                    setOriginalName(name.trim());
+                    setOriginalEmail(email.trim());
+                    Alert.alert('Success', 'Your profile has been updated.');
+                } else {
+                    Alert.alert('Error', 'Failed to update profile. Please try again.');
+                }
+            } else {
+                // Save locally for non-authenticated users
+                const accountData: AccountData = {
+                    name: name.trim(),
+                    email: email.trim(),
+                };
+                
+                await AsyncStorage.setItem(ACCOUNT_DATA_KEY, JSON.stringify(accountData));
+                console.log(TAG, 'Account data saved locally');
+                // Update original values to reflect the saved state
+                setOriginalName(name.trim());
+                setOriginalEmail(email.trim());
+                Alert.alert('Success', 'Your account information has been updated.');
+            }
             
         } catch (error) {
             console.error(TAG, 'Error saving account data:', error);
@@ -148,14 +151,29 @@ export default function AccountScreen() {
     };
 
     // ========================================
+    // COMPUTED VALUES
+    // ========================================
+    
+    // Check if any changes have been made
+    const hasChanges = (name.trim() !== originalName) || (email.trim() !== originalEmail);
+    
+    // Check if form is valid (name is required)
+    const isFormValid = name.trim().length > 0;
+    
+    // ========================================
     // EVENT HANDLERS
     // ========================================
 
     const handleSave = async () => {
         console.log(TAG, 'Save button pressed');
         
-        if (!name.trim()) {
+        if (!isFormValid) {
             Alert.alert('Error', 'Please enter your name');
+            return;
+        }
+        
+        if (!hasChanges) {
+            Alert.alert('No Changes', 'No changes have been made to save.');
             return;
         }
         
@@ -164,14 +182,12 @@ export default function AccountScreen() {
 
     const handleLogin = () => {
         console.log(TAG, 'Login button pressed');
-        // TODO: Navigate to login screen or implement login logic
-        Alert.alert('Login', 'Login functionality will be implemented here');
+        router.push('/login');
     };
 
     const handleSignUp = () => {
         console.log(TAG, 'Sign up button pressed');
-        // TODO: Navigate to sign up screen or implement sign up logic
-        Alert.alert('Sign Up', 'Sign up functionality will be implemented here');
+        router.push('/signup');
     };
 
     const handleLogout = () => {
@@ -192,16 +208,18 @@ export default function AccountScreen() {
                         try {
                             console.log(TAG, 'User confirmed logout');
                             
-                            // Clear authentication and user data
-                            await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+                            // Use auth context logout
+                            await logout();
+                            
+                            // Clear local data
                             await AsyncStorage.removeItem(ACCOUNT_DATA_KEY);
                             await AsyncStorage.removeItem('@planit_profile_image');
                             
-                            // Update state
-                            setIsLoggedIn(false);
+                            // Update local state
                             setName('');
-                            setLocation('');
-                            setMemberSince('');
+                            setEmail('');
+                            setOriginalName('');
+                            setOriginalEmail('');
                             
                             Alert.alert('Logged Out', 'You have been successfully logged out.');
                             
@@ -252,12 +270,12 @@ export default function AccountScreen() {
             />
             <ThemedView style={styles.container}>
                 <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                    {isLoggedIn ? (
+                    {isAuthenticated ? (
                         <>
                             {/* Member Since */}
                             <View style={styles.memberSinceContainer}>
                                 <ThemedText type="defaultSemiBold" style={styles.memberSinceText}>
-                                    Member since {memberSince}
+                                    Member since {user?.memberSince ? new Date(user.memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'}
                                 </ThemedText>
                             </View>
 
@@ -286,25 +304,27 @@ export default function AccountScreen() {
                                 </View>
                             </View>
 
-                            {/* Location */}
+                            {/* Email */}
                             <View style={styles.inputGroup}>
                                 <ThemedText type="defaultSemiBold" style={styles.inputLabel}>
-                                    Location
+                                    Email
                                 </ThemedText>
                                 <View style={styles.inputContainer}>
                                     <MaterialCommunityIcons 
-                                        name="map-marker" 
+                                        name="email" 
                                         size={ICON_SIZES.lg} 
                                         color={COLORS.lightText} 
                                         style={styles.inputIcon}
                                     />
                                     <TextInput
                                         style={styles.textInput}
-                                        value={location}
-                                        onChangeText={setLocation}
-                                        placeholder="Enter your city, country"
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        placeholder="Enter your email address"
                                         placeholderTextColor={COLORS.lightText}
-                                        autoCapitalize="words"
+                                        autoCapitalize="none"
+                                        keyboardType="email-address"
+                                        autoComplete="email"
                                         editable={!isSaving}
                                     />
                                 </View>
@@ -314,10 +334,10 @@ export default function AccountScreen() {
                             <TouchableOpacity
                                 style={[
                                     styles.saveButton,
-                                    (isSaving || !name.trim()) && styles.buttonDisabled
+                                    (isSaving || !isFormValid || !hasChanges) && styles.buttonDisabled
                                 ]}
                                 onPress={handleSave}
-                                disabled={isSaving || !name.trim()}
+                                disabled={isSaving || !isFormValid || !hasChanges}
                                 accessibilityLabel="Save account information"
                                 accessibilityRole="button"
                             >
@@ -327,7 +347,7 @@ export default function AccountScreen() {
                                     color={COLORS.white}
                                 />
                                 <Text style={styles.buttonText}>
-                                    {isSaving ? 'Saving...' : 'Save Changes'}
+                                    {isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes'}
                                 </Text>
                             </TouchableOpacity>
 
