@@ -22,6 +22,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES, SHADOWS, PROFILE_LAYOUT } from '@/constants/DesignTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URLS } from '@/constants/ApiConfig';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -41,7 +42,7 @@ export default function ProfileScreen() {
     // HOOKS & CONTEXT
     // ========================================
     
-    const { user, isAuthenticated, refreshUserProfile } = useAuth();
+    const { user, isAuthenticated, refreshUserProfile, token } = useAuth();
 
     // ========================================
     // STATE MANAGEMENT
@@ -174,9 +175,14 @@ export default function ProfileScreen() {
                     fileSize: selectedImage.fileSize
                 });
 
-                // Update state and save to storage
-                setProfileImageUri(selectedImage.uri);
-                await saveProfileImage(selectedImage.uri);
+                // Upload image to backend if user is authenticated
+                if (isAuthenticated && token) {
+                    await uploadImageToBackend(selectedImage.uri);
+                } else {
+                    // Fallback to local storage for non-authenticated users
+                    setProfileImageUri(selectedImage.uri);
+                    await saveProfileImage(selectedImage.uri);
+                }
                 
                 console.log(TAG, 'Profile image updated successfully');
             } else {
@@ -191,6 +197,54 @@ export default function ProfileScreen() {
             );
         } finally {
             setIsLoadingImage(false);
+        }
+    };
+
+    /**
+     * Uploads image to backend
+     */
+    const uploadImageToBackend = async (imageUri: string): Promise<void> => {
+        try {
+            console.log(TAG, 'Uploading image to backend');
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('image', {
+                uri: imageUri,
+                type: 'image/jpeg',
+                name: 'profile-image.jpg'
+            } as any);
+
+            // Make API call
+            const response = await fetch(API_URLS.USER_PROFILE_IMAGE, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                console.log(TAG, 'Image uploaded successfully:', result.imageUrl);
+                
+                // Update local state with the backend URL
+                const fullImageUrl = `${API_URLS.USER_PROFILE_IMAGE.replace('/api/user/profile-image', '')}${result.imageUrl}`;
+                setProfileImageUri(fullImageUrl);
+                
+                // Update user context with new profile image URL
+                if (refreshUserProfile) {
+                    await refreshUserProfile();
+                }
+            } else {
+                console.error(TAG, 'Image upload failed:', result.message);
+                Alert.alert('Upload Failed', result.message || 'Failed to upload image. Please try again.');
+            }
+        } catch (error) {
+            console.error(TAG, 'Error uploading image:', error);
+            Alert.alert('Upload Error', 'Failed to upload image. Please try again.');
         }
     };
 
@@ -316,7 +370,13 @@ export default function ProfileScreen() {
                         accessibilityHint="Tap to change, long press to reset to default"
                     >
                         <Image
-                            source={profileImageUri ? { uri: profileImageUri } : require('@/assets/images/default-avatar.jpg')}
+                            source={
+                                isAuthenticated && user?.profileImageUrl 
+                                    ? { uri: `${API_URLS.USER_PROFILE_IMAGE.replace('/api/user/profile-image', '')}${user.profileImageUrl}` }
+                                    : profileImageUri 
+                                        ? { uri: profileImageUri } 
+                                        : require('@/assets/images/default-avatar.jpg')
+                            }
                             style={styles.profileImage}
                         />
                         <View style={styles.editIconContainer}>

@@ -64,6 +64,7 @@ export const API_ENDPOINTS = {
     USER_LOGIN: '/api/user/login',
     USER_PROFILE: '/api/user/profile',
     USER_PASSWORD: '/api/user/password',
+    USER_PROFILE_IMAGE: '/api/user/profile-image',
     USER_STATS: '/api/user/stats',
 } as const;
 
@@ -79,6 +80,7 @@ export const API_URLS = {
     USER_LOGIN: `${BACKEND_URL}${API_ENDPOINTS.USER_LOGIN}`,
     USER_PROFILE: `${BACKEND_URL}${API_ENDPOINTS.USER_PROFILE}`,
     USER_PASSWORD: `${BACKEND_URL}${API_ENDPOINTS.USER_PASSWORD}`,
+    USER_PROFILE_IMAGE: `${BACKEND_URL}${API_ENDPOINTS.USER_PROFILE_IMAGE}`,
     USER_STATS: `${BACKEND_URL}${API_ENDPOINTS.USER_STATS}`,
 } as const;
 
