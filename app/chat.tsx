@@ -23,6 +23,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '@/constants/DesignTokens';
 import { saveChatToLocalStorage as saveToStorage, StoredChatData } from '@/constants/StorageUtils';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -75,6 +76,8 @@ interface ApiResponse {
     success: boolean;
     response: string;
     chatId: string;
+    title: string;
+    location: string;
     error?: string;
 }
 
@@ -135,6 +138,9 @@ export default function ChatScreen() {
     
     // Route parameters
     const params = useLocalSearchParams();
+    
+    // Auth context
+    const { user, isAuthenticated, token } = useAuth();
     
     // Chat state
     const [isLoading, setIsLoading] = useState(true);
@@ -261,8 +267,8 @@ export default function ChatScreen() {
 
             // Get AI response from backend
             console.log(TAG, 'Fetching AI response from backend');
-            const { message: aiResponse, chatId: backendChatId } = await fetchAIResponse(searchData, userMessage);
-            console.log(TAG, 'AI response received:', { aiResponse, backendChatId });
+            const { message: aiResponse, chatId: backendChatId, title: backendTitle, location: backendLocation } = await fetchAIResponse(searchData, userMessage);
+            console.log(TAG, 'AI response received:', { aiResponse, backendChatId, backendTitle, backendLocation });
             
             // Update user message ID to reference backend chat ID
             const updatedUserMessage = {
@@ -272,7 +278,7 @@ export default function ChatScreen() {
             
             // Create complete chat data with backend chat ID
             console.log(TAG, 'Creating complete chat data structure with backend UUID');
-            const newChatData = createChatDataWithBackendId(searchData, updatedUserMessage, aiResponse, backendChatId);
+            const newChatData = createChatDataWithBackendId(searchData, updatedUserMessage, aiResponse, backendChatId, backendTitle, backendLocation);
             console.log(TAG, 'Chat data created:', {
                 id: newChatData.id,
                 title: newChatData.title,
@@ -345,18 +351,22 @@ export default function ChatScreen() {
      * @param userMessage - User's initial message
      * @param aiMessage - AI's response message
      * @param backendChatId - Chat ID from backend
+     * @param backendTitle - Title from backend
+     * @param backendLocation - Location from backend
      * @returns Complete chat data structure
      */
     const createChatDataWithBackendId = (
         searchData: SearchData, 
         userMessage: ChatMessage, 
         aiMessage: ChatMessage,
-        backendChatId: string
+        backendChatId: string,
+        backendTitle: string,
+        backendLocation: string
     ): ChatData => {
         const chatData = {
             id: backendChatId,
-            title: generateChatTitle(searchData.searchQuery),
-            location: extractLocationFromSearchData(searchData),
+            title: backendTitle,
+            location: backendLocation,
             messages: [userMessage, aiMessage],
             searchData,
             createdAt: new Date().toISOString(),
@@ -414,7 +424,7 @@ export default function ChatScreen() {
      * @param userMessage - User's message content
      * @returns AI response message and backend chat ID
      */
-    const fetchAIResponse = async (searchData: SearchData, userMessage: ChatMessage): Promise<{ message: ChatMessage; chatId: string }> => {
+    const fetchAIResponse = async (searchData: SearchData, userMessage: ChatMessage): Promise<{ message: ChatMessage; chatId: string; title: string; location: string }> => {
         console.log(TAG, 'Starting API request to /api/plan');
         console.log(TAG, 'Request payload:', {
             searchData: {
@@ -427,9 +437,15 @@ export default function ChatScreen() {
             userMessage: userMessage.content
         });
 
+        // Include authorization header if user is authenticated
+        const headers = {
+            ...DEFAULT_HEADERS,
+            ...(isAuthenticated && token && { Authorization: `Bearer ${token}` })
+        };
+
         const response = await fetch(API_URLS.PLAN_GENERATION, {
             method: 'POST',
-            headers: DEFAULT_HEADERS,
+            headers,
             body: JSON.stringify({
                 searchData,
                 userMessage: userMessage.content,
@@ -464,204 +480,12 @@ export default function ChatScreen() {
             messageId: aiMessage.id,
             chatId: result.chatId
         });
-        return { message: aiMessage, chatId: result.chatId };
-    };
-
-    // ========================================
-    // DATA PERSISTENCE
-    // ========================================
-
-    /**
-     * Extracts location from search data during chat creation with enhanced pattern matching
-     * Note: This is only used once during chat creation to populate the ChatData.location field
-     * @param searchData - Search parameters
-     * @returns Location string for display
-     */
-    const extractLocationFromSearchData = (searchData: SearchData): string => {
-        // Input validation
-        if (!searchData || !searchData.searchQuery) {
-            console.warn(TAG, 'Invalid search data provided to extractLocationFromSearchData');
-            return 'Unknown Location';
-        }
-
-        const originalQuery = searchData.searchQuery.trim();
-        
-        // Handle empty or very short queries
-        if (originalQuery.length === 0) {
-            console.warn(TAG, 'Empty search query provided');
-            return 'Unknown Location';
-        }
-
-        if (originalQuery.length <= 2) {
-            console.warn(TAG, 'Search query too short for location extraction');
-            return originalQuery;
-        }
-
-        const query = originalQuery.toLowerCase();
-        console.log(TAG, 'Extracting location from query:', originalQuery);
-
-        // Enhanced location patterns with priority order
-        const locationPatterns = [
-            // Most specific patterns first
-            { pattern: ' near ', description: 'near pattern' },
-            { pattern: ' in ', description: 'in pattern' },
-            { pattern: ' at ', description: 'at pattern' },
-            { pattern: ' around ', description: 'around pattern' },
-            { pattern: ' from ', description: 'from pattern' },
-            { pattern: ' to ', description: 'to pattern' },
-            { pattern: ' by ', description: 'by pattern' },
-            { pattern: ' close to ', description: 'close to pattern' },
-            { pattern: ' next to ', description: 'next to pattern' },
-        ];
-
-        // Try each pattern in order
-        for (const { pattern, description } of locationPatterns) {
-            if (query.includes(pattern)) {
-                const parts = query.split(pattern);
-                let location = parts[parts.length - 1].trim();
-                
-                // Clean up the extracted location
-                location = cleanLocationString(location, originalQuery);
-                
-                if (location && location.length > 0) {
-                    console.log(TAG, `Found location using ${description}:`, location);
-                    return location;
-                }
-            }
-        }
-
-        // Try alternative patterns for common queries
-        const alternativeLocation = extractAlternativeLocationPatterns(query, originalQuery);
-        if (alternativeLocation) {
-            console.log(TAG, 'Found location using alternative pattern:', alternativeLocation);
-            return alternativeLocation;
-        }
-
-        // Fallback: use the original query with length limit
-        const fallbackLocation = originalQuery.length > 50 
-            ? `${originalQuery.substring(0, 50).trim()}...`
-            : originalQuery;
-            
-        console.log(TAG, 'No location pattern found, using fallback:', fallbackLocation);
-        return fallbackLocation;
-    };
-
-    /**
-     * Cleans and validates extracted location string
-     * @param location - Raw extracted location string
-     * @param originalQuery - Original search query for context
-     * @returns Cleaned location string
-     */
-    const cleanLocationString = (location: string, originalQuery: string): string => {
-        if (!location || typeof location !== 'string') {
-            return '';
-        }
-
-        let cleaned = location.trim();
-
-        // Remove common trailing words that aren't part of location
-        const trailingWordsToRemove = [
-            'for', 'with', 'and', 'or', 'but', 'so', 'yet', 'because',
-            'restaurants', 'food', 'places', 'activities', 'things',
-            'coffee', 'dinner', 'lunch', 'breakfast', 'shopping',
-            'today', 'tomorrow', 'tonight', 'weekend'
-        ];
-
-        const words = cleaned.split(' ');
-        let cleanedWords = [...words];
-
-        // Remove trailing non-location words
-        while (cleanedWords.length > 0) {
-            const lastWord = cleanedWords[cleanedWords.length - 1].toLowerCase();
-            if (trailingWordsToRemove.includes(lastWord)) {
-                cleanedWords.pop();
-            } else {
-                break;
-            }
-        }
-
-        cleaned = cleanedWords.join(' ').trim();
-
-        // Minimum length validation
-        if (cleaned.length < 2) {
-            return '';
-        }
-
-        // Maximum length with intelligent truncation
-        if (cleaned.length > 40) {
-            // Try to truncate at word boundary
-            const truncated = cleaned.substring(0, 40);
-            const lastSpaceIndex = truncated.lastIndexOf(' ');
-            
-            if (lastSpaceIndex > 20) {
-                cleaned = truncated.substring(0, lastSpaceIndex) + '...';
-            } else {
-                cleaned = truncated + '...';
-            }
-        }
-
-        // Capitalize first letter of each word for display
-        cleaned = cleaned.split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-
-        return cleaned;
-    };
-
-    /**
-     * Extracts location using alternative patterns and heuristics
-     * @param query - Lowercase search query
-     * @param originalQuery - Original cased search query
-     * @returns Extracted location or null
-     */
-    const extractAlternativeLocationPatterns = (query: string, originalQuery: string): string | null => {
-        // Pattern: "restaurants [in] downtown seattle" -> "downtown seattle"
-        const restaurantPattern = /(?:restaurants?|food|dining|eat|coffee|bars?)\s+(?:in\s+)?(.+)/i;
-        let match = originalQuery.match(restaurantPattern);
-        if (match && match[1]) {
-            const location = cleanLocationString(match[1], originalQuery);
-            if (location.length > 2) return location;
-        }
-
-        // Pattern: "things to do [in] paris" -> "paris"
-        const activitiesPattern = /(?:things\s+to\s+do|activities|attractions|visit|explore)\s+(?:in\s+)?(.+)/i;
-        match = originalQuery.match(activitiesPattern);
-        if (match && match[1]) {
-            const location = cleanLocationString(match[1], originalQuery);
-            if (location.length > 2) return location;
-        }
-
-        // Pattern: "show me [places in] tokyo" -> "tokyo"
-        const showMePattern = /(?:show\s+me|find\s+me|get\s+me)\s+(?:places\s+(?:in\s+)?|.*?(?:in\s+))(.+)/i;
-        match = originalQuery.match(showMePattern);
-        if (match && match[1]) {
-            const location = cleanLocationString(match[1], originalQuery);
-            if (location.length > 2) return location;
-        }
-
-        // Pattern: Look for common city/state/country patterns
-        const locationWords = [
-            'city', 'town', 'village', 'downtown', 'uptown', 'district',
-            'beach', 'park', 'center', 'square', 'street', 'avenue',
-            'county', 'state', 'province', 'country'
-        ];
-        
-        for (const locWord of locationWords) {
-            if (query.includes(locWord)) {
-                // Extract context around the location word
-                const index = query.indexOf(locWord);
-                const start = Math.max(0, index - 20);
-                const end = Math.min(query.length, index + locWord.length + 20);
-                const context = originalQuery.substring(start, end).trim();
-                
-                const contextLocation = cleanLocationString(context, originalQuery);
-                if (contextLocation.length > 2) {
-                    return contextLocation;
-                }
-            }
-        }
-
-        return null;
+        return { 
+            message: aiMessage, 
+            chatId: result.chatId, 
+            title: result.title, 
+            location: result.location 
+        };
     };
 
     // ========================================

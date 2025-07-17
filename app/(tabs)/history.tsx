@@ -21,6 +21,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TIME_CONSTANTS } from '@/constants/DesignTokens';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
 import { getChatsFromLocalStorage, convertChatsToHistoryItems, mergeChatsWithLocal, deleteChatFromLocalStorage, TripPlanHistoryItem, ImageData } from '@/constants/StorageUtils';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -156,6 +157,9 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
 // ========================================
 
 export default function HistoryScreen() {
+    // Auth context
+    const { user, isAuthenticated, token } = useAuth();
+    
     // State management
     const [tripPlanHistory, setTripPlanHistory] = useState<TripPlanHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -202,13 +206,21 @@ export default function HistoryScreen() {
                 return;
             }
             
-            // Show local data immediately for better UX
+            // For non-authenticated users, only use local storage
+            if (!isAuthenticated) {
+                console.log(TAG, 'User not authenticated, using local data only');
+                setTripPlanHistory(localTripPlans);
+                return;
+            }
+            
+            // For authenticated users, show local data immediately for better UX
             if (localTripPlans.length > 0) {
                 setTripPlanHistory(localTripPlans);
             }
             
-            // Then fetch from API and merge with local data
+            // Then fetch from API and merge with local data (authenticated users only)
             try {
+                console.log(TAG, 'User authenticated, fetching from API and merging with local data');
                 const apiTripPlans = await fetchTripPlanHistoryFromAPI();
                 console.log(TAG, 'Fetched', apiTripPlans.length, 'trip plans from API');
                 
@@ -220,7 +232,7 @@ export default function HistoryScreen() {
                 // Note: We don't save API data to AsyncStorage here because chats are saved
                 // individually when created. This avoids overwriting newer local data.
             } catch (apiError) {
-                console.error(TAG, 'API fetch failed, using local data:', apiError);
+                console.error(TAG, 'API fetch failed for authenticated user, using local data:', apiError);
 
             }
         } catch (error) {
@@ -263,9 +275,15 @@ export default function HistoryScreen() {
     const fetchTripPlanHistoryFromAPI = async (): Promise<TripPlanHistoryItem[]> => {
         console.log(TAG, `Fetching trip plan history from API: ${API_URLS.CHAT_HISTORY}`);
         
+        // Include authorization header if user is authenticated
+        const headers = {
+            ...DEFAULT_HEADERS,
+            ...(isAuthenticated && token && { Authorization: `Bearer ${token}` })
+        };
+        
         const response = await fetch(API_URLS.CHAT_HISTORY, {
             method: 'GET',
-            headers: DEFAULT_HEADERS,
+            headers,
         });
 
         console.log(TAG, 'API response status:', response.status, response.statusText);
@@ -461,9 +479,16 @@ export default function HistoryScreen() {
             // Send delete request to backend
             try {
                 console.log(TAG, 'Sending delete request to API');
+                
+                // Include authorization header if user is authenticated
+                const headers = {
+                    ...DEFAULT_HEADERS,
+                    ...(isAuthenticated && token && { Authorization: `Bearer ${token}` })
+                };
+                
                 const response = await fetch(API_URLS.DELETE_CHAT(tripPlanId), {
                     method: 'DELETE',
-                    headers: DEFAULT_HEADERS,
+                    headers,
                 });
                 
                 console.log(TAG, 'Delete API response status:', response.status, response.statusText);

@@ -21,6 +21,7 @@ import AppearanceActionSheet, { showAppearanceSheet } from '@/components/Appeara
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES, SHADOWS, PROFILE_LAYOUT } from '@/constants/DesignTokens';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -35,6 +36,12 @@ const PROFILE_IMAGE_KEY = '@planit_profile_image';
 
 export default function ProfileScreen() {
     console.log(TAG, 'ProfileScreen component initialized');
+
+    // ========================================
+    // HOOKS & CONTEXT
+    // ========================================
+    
+    const { user, isAuthenticated, refreshUserProfile } = useAuth();
 
     // ========================================
     // STATE MANAGEMENT
@@ -56,6 +63,14 @@ export default function ProfileScreen() {
             console.log(TAG, 'ProfileScreen unmounted');
         };
     }, []);
+
+    // Refresh user profile when authentication changes
+    useEffect(() => {
+        if (isAuthenticated && refreshUserProfile && user) {
+            console.log(TAG, 'Refreshing user profile for authenticated user');
+            refreshUserProfile();
+        }
+    }, [isAuthenticated, user?.id]);
 
     // ========================================
     // IMAGE MANAGEMENT FUNCTIONS
@@ -245,7 +260,22 @@ export default function ProfileScreen() {
         
         switch (settingName) {
             case 'Change Password':
-                router.push('/change-password' as any);
+                if (isAuthenticated) {
+                    router.push('/change-password' as any);
+                } else {
+                    console.log(TAG, 'User not authenticated, redirecting to login for password change');
+                    Alert.alert(
+                        'Login Required',
+                        'You need to be logged in to change your password. Would you like to sign in now?',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { 
+                                text: 'Sign In', 
+                                onPress: () => router.push('/account' as any)
+                            }
+                        ]
+                    );
+                }
                 break;
             case 'Account':
                 router.push('/account' as any);
@@ -297,15 +327,21 @@ export default function ProfileScreen() {
                             )}
                         </View>
                     </TouchableOpacity>
-                    <ThemedText type="title" style={styles.userName}>John Doe</ThemedText>
+                    <ThemedText type="title" style={styles.userName}>
+                        {isAuthenticated && user ? user.name : 'Guest User'}
+                    </ThemedText>
                     <ThemedView style={styles.statsContainer}>
                         <ThemedView style={styles.statItem}>
-                            <ThemedText type="defaultSemiBold">12</ThemedText>
+                            <ThemedText type="defaultSemiBold">
+                                {isAuthenticated && user ? user.adventuresCount : 0}
+                            </ThemedText>
                             <ThemedText>Adventures</ThemedText>
                         </ThemedView>
                         <ThemedView style={styles.statDivider} />
                         <ThemedView style={styles.statItem}>
-                            <ThemedText type="defaultSemiBold">5</ThemedText>
+                            <ThemedText type="defaultSemiBold">
+                                {isAuthenticated && user ? user.placesVisitedCount : 0}
+                            </ThemedText>
                             <ThemedText>Places</ThemedText>
                         </ThemedView>
                     </ThemedView>
@@ -351,7 +387,7 @@ export default function ProfileScreen() {
 
                 <TouchableOpacity 
                     style={styles.settingItem}
-                    onPress={() => handleSettingPress('Rate Us')}
+                    onPress={() => handleSettingPress('Rate PlanIT')}
                     accessibilityLabel="Rate the app"
                     accessibilityRole="button"
                 >
@@ -478,7 +514,7 @@ const styles = StyleSheet.create({
         marginHorizontal: SPACING.xl,
     },
     settingsContainer: {
-        padding: SPACING.xl,
+        paddingHorizontal: SPACING.xl,
         marginTop: PROFILE_LAYOUT.settingsTopMargin,
     },
     settingsTitle: {
@@ -499,7 +535,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: TYPOGRAPHY.fontSize.xs,
         color: COLORS.lightText,
-        marginTop: SPACING.xl,
+        marginTop: SPACING.sm,
         marginBottom: SPACING.lg,
         opacity: 0.8,
     },
