@@ -344,7 +344,6 @@ export default function ProfileScreen() {
         }
     };
 
-    console.log(TAG, 'Rendering ProfileScreen with current year:', new Date().getFullYear());
     console.log(TAG, 'Profile image state:', {
         hasCustomImage: !!profileImageUri,
         isLoading: isLoadingImage,
