@@ -221,8 +221,6 @@ export default function AccountScreen() {
                             setOriginalName('');
                             setOriginalEmail('');
                             
-                            Alert.alert('Logged Out', 'You have been successfully logged out.');
-                            
                         } catch (error) {
                             console.error(TAG, 'Error during logout:', error);
                             Alert.alert('Error', 'Failed to logout. Please try again.');
