@@ -11,7 +11,7 @@
 // ========================================
 import React, { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity, View, Linking, Alert } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Linking, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -254,11 +254,53 @@ export default function ProfileScreen() {
     const clearProfileImage = async (): Promise<void> => {
         try {
             console.log(TAG, 'Clearing profile image');
-            await AsyncStorage.removeItem(PROFILE_IMAGE_KEY);
-            setProfileImageUri(null);
+            
+            // If user is authenticated, clear the profile image from backend
+            if (isAuthenticated && token) {
+                await clearProfileImageFromBackend();
+            } else {
+                // Fallback to local storage for non-authenticated users
+                await AsyncStorage.removeItem(PROFILE_IMAGE_KEY);
+                setProfileImageUri(null);
+            }
+            
             console.log(TAG, 'Profile image cleared successfully');
         } catch (error) {
             console.error(TAG, 'Error clearing profile image:', error);
+        }
+    };
+
+    /**
+     * Clears profile image from backend
+     */
+    const clearProfileImageFromBackend = async (): Promise<void> => {
+        try {
+            console.log(TAG, 'Clearing profile image from backend');
+            
+            const response = await fetch(API_URLS.USER_PROFILE_IMAGE, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                console.log(TAG, 'Profile image cleared from backend successfully');
+                setProfileImageUri(null);
+                
+                // Update user context
+                if (refreshUserProfile) {
+                    await refreshUserProfile();
+                }
+            } else {
+                console.error(TAG, 'Failed to clear profile image from backend:', result.message);
+                Alert.alert('Reset Failed', result.message || 'Failed to reset profile image. Please try again.');
+            }
+        } catch (error) {
+            console.error(TAG, 'Error clearing profile image from backend:', error);
+            Alert.alert('Reset Error', 'Failed to reset profile image. Please try again.');
         }
     };
 
@@ -378,13 +420,11 @@ export default function ProfileScreen() {
                             }
                             style={styles.profileImage}
                         />
-                        <View style={styles.editIconContainer}>
-                            {isLoadingImage ? (
-                                <MaterialCommunityIcons name="loading" size={ICON_SIZES.lg} color={COLORS.white} />
-                            ) : (
-                                <MaterialCommunityIcons name="camera" size={ICON_SIZES.lg} color={COLORS.white} />
-                            )}
-                        </View>
+                        {isLoadingImage && (
+                            <View style={styles.loadingOverlay}>
+                                <ActivityIndicator size="large" color={COLORS.white} />
+                            </View>
+                        )}
                     </TouchableOpacity>
                     <ThemedText type="title" style={styles.userName}>
                         {isAuthenticated && user ? user.name : 'Guest User'}
@@ -548,6 +588,17 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         ...SHADOWS.card,
+    },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: PROFILE_LAYOUT.profileImageRadius,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     userName: {
         fontSize: TYPOGRAPHY.fontSize.xl,
