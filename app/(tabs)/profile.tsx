@@ -11,7 +11,7 @@
 // ========================================
 import React, { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity, View, Linking, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Linking, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,6 +50,7 @@ export default function ProfileScreen() {
     
     const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
     const [isLoadingImage, setIsLoadingImage] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     // ========================================
     // EFFECTS
@@ -305,6 +306,37 @@ export default function ProfileScreen() {
     };
 
     // ========================================
+    // REFRESH FUNCTIONALITY
+    // ========================================
+    
+    /**
+     * Handles pull-down refresh functionality
+     * Refreshes user profile data and reloads profile image
+     */
+    const onRefresh = async (): Promise<void> => {
+        console.log(TAG, 'Pull-down refresh triggered');
+        setRefreshing(true);
+        
+        try {
+            // Refresh user profile if authenticated
+            if (isAuthenticated && refreshUserProfile) {
+                console.log(TAG, 'Refreshing user profile data');
+                await refreshUserProfile();
+            }
+            
+            // Reload profile image
+            console.log(TAG, 'Reloading profile image');
+            await loadProfileImage();
+            
+            console.log(TAG, 'Profile refresh completed successfully');
+        } catch (error) {
+            console.error(TAG, 'Error during profile refresh:', error);
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    // ========================================
     // EVENT HANDLERS
     // ========================================
 
@@ -394,145 +426,160 @@ export default function ProfileScreen() {
 
     return (
         <ThemedView style={styles.container}>
-            {/* Profile Header with Banner */}
-            <View style={styles.bannerContainer}>
-                <Image
-                    source={require('@/assets/images/profile-banner.jpg')}
-                    style={styles.bannerImage}
-                />
-                <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
-                <View style={styles.profileOverlay}>
-                    <TouchableOpacity 
-                        style={styles.profileImageContainer}
-                        onPress={handleProfileImagePress}
-                        onLongPress={handleProfileImageLongPress}
-                        accessibilityLabel="Edit profile picture"
-                        accessibilityRole="button"
-                        accessibilityHint="Tap to change, long press to reset to default"
-                    >
-                        <Image
-                            source={
-                                isAuthenticated && user?.profileImageUrl 
-                                    ? { uri: `${API_URLS.USER_PROFILE_IMAGE.replace('/api/user/profile-image', '')}${user.profileImageUrl}` }
-                                    : profileImageUri 
-                                        ? { uri: profileImageUri } 
-                                        : require('@/assets/images/default-avatar.jpg')
-                            }
-                            style={styles.profileImage}
-                        />
-                        {isLoadingImage && (
-                            <View style={styles.loadingOverlay}>
-                                <ActivityIndicator size="large" color={COLORS.white} />
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                    <ThemedText type="title" style={styles.userName}>
-                        {isAuthenticated && user ? user.name : 'Guest User'}
-                    </ThemedText>
-                    <ThemedView style={styles.statsContainer}>
-                        <ThemedView style={styles.statItem}>
-                            <ThemedText type="defaultSemiBold">
-                                {isAuthenticated && user ? user.adventuresCount : 0}
-                            </ThemedText>
-                            <ThemedText>Adventures</ThemedText>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={COLORS.primary}
+                        colors={[COLORS.primary]}
+                        progressBackgroundColor={COLORS.white}
+                    />
+                }
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Profile Header with Banner */}
+                <View style={styles.bannerContainer}>
+                    <Image
+                        source={require('@/assets/images/profile-banner.jpg')}
+                        style={styles.bannerImage}
+                    />
+                    <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+                    <View style={styles.profileOverlay}>
+                        <TouchableOpacity 
+                            style={styles.profileImageContainer}
+                            onPress={handleProfileImagePress}
+                            onLongPress={handleProfileImageLongPress}
+                            accessibilityLabel="Edit profile picture"
+                            accessibilityRole="button"
+                            accessibilityHint="Tap to change, long press to reset to default"
+                        >
+                            <Image
+                                source={
+                                    isAuthenticated && user?.profileImageUrl 
+                                        ? { uri: `${API_URLS.USER_PROFILE_IMAGE.replace('/api/user/profile-image', '')}${user.profileImageUrl}` }
+                                        : profileImageUri 
+                                            ? { uri: profileImageUri } 
+                                            : require('@/assets/images/default-avatar.jpg')
+                                }
+                                style={styles.profileImage}
+                            />
+                            {isLoadingImage && (
+                                <View style={styles.loadingOverlay}>
+                                    <ActivityIndicator size="large" color={COLORS.white} />
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                        <ThemedText type="title" style={styles.userName}>
+                            {isAuthenticated && user ? user.name : 'Guest User'}
+                        </ThemedText>
+                        <ThemedView style={styles.statsContainer}>
+                            <ThemedView style={styles.statItem}>
+                                <ThemedText type="defaultSemiBold">
+                                    {isAuthenticated && user ? user.adventuresCount : 0}
+                                </ThemedText>
+                                <ThemedText>Adventures</ThemedText>
+                            </ThemedView>
+                            <ThemedView style={styles.statDivider} />
+                            <ThemedView style={styles.statItem}>
+                                <ThemedText type="defaultSemiBold">
+                                    {isAuthenticated && user ? user.placesVisitedCount : 0}
+                                </ThemedText>
+                                <ThemedText>Places</ThemedText>
+                            </ThemedView>
                         </ThemedView>
-                        <ThemedView style={styles.statDivider} />
-                        <ThemedView style={styles.statItem}>
-                            <ThemedText type="defaultSemiBold">
-                                {isAuthenticated && user ? user.placesVisitedCount : 0}
-                            </ThemedText>
-                            <ThemedText>Places</ThemedText>
-                        </ThemedView>
-                    </ThemedView>
+                    </View>
                 </View>
-            </View>
 
-            {/* Settings Menu */}
-            <ThemedView style={styles.settingsContainer}>
-                <ThemedText type="subtitle" style={styles.settingsTitle}>Settings</ThemedText>
-                
-                <TouchableOpacity 
-                    style={styles.settingItem}
-                    onPress={() => handleSettingPress('Account')}
-                    accessibilityLabel="Account settings"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="account-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Account</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
+                {/* Settings Menu */}
+                <ThemedView style={styles.settingsContainer}>
+                    <ThemedText type="subtitle" style={styles.settingsTitle}>Settings</ThemedText>
+                    
+                    <TouchableOpacity 
+                        style={styles.settingItem}
+                        onPress={() => handleSettingPress('Account')}
+                        accessibilityLabel="Account settings"
+                        accessibilityRole="button"
+                    >
+                        <MaterialCommunityIcons name="account-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ThemedText style={styles.settingText}>Account</ThemedText>
+                        <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.settingItem}
-                    onPress={() => handleSettingPress('Change Password')}
-                    accessibilityLabel="Change password settings"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="lock-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Change Password</ThemedText>
-                    <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.settingItem}
+                        onPress={() => handleSettingPress('Change Password')}
+                        accessibilityLabel="Change password settings"
+                        accessibilityRole="button"
+                    >
+                        <MaterialCommunityIcons name="lock-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ThemedText style={styles.settingText}>Change Password</ThemedText>
+                        <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.settingItem}
-                    onPress={() => handleSettingPress('Appearance')}
-                    accessibilityLabel="Appearance settings"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="palette-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Appearance</ThemedText>
-                    <MaterialCommunityIcons name="chevron-down" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.settingItem}
+                        onPress={() => handleSettingPress('Appearance')}
+                        accessibilityLabel="Appearance settings"
+                        accessibilityRole="button"
+                    >
+                        <MaterialCommunityIcons name="palette-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ThemedText style={styles.settingText}>Appearance</ThemedText>
+                        <MaterialCommunityIcons name="chevron-down" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.settingItem}
-                    onPress={() => handleSettingPress('Rate PlanIT')}
-                    accessibilityLabel="Rate the app"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="star-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Rate Us</ThemedText>
-                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.settingItem}
+                        onPress={() => handleSettingPress('Rate PlanIT')}
+                        accessibilityLabel="Rate the app"
+                        accessibilityRole="button"
+                    >
+                        <MaterialCommunityIcons name="star-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ThemedText style={styles.settingText}>Rate Us</ThemedText>
+                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.settingItem}
-                    onPress={() => handleSettingPress('Check for Updates')}
-                    accessibilityLabel="Check for app updates"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="update" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Check for Updates</ThemedText>
-                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.settingItem}
+                        onPress={() => handleSettingPress('Check for Updates')}
+                        accessibilityLabel="Check for app updates"
+                        accessibilityRole="button"
+                    >
+                        <MaterialCommunityIcons name="update" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ThemedText style={styles.settingText}>Check for Updates</ThemedText>
+                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.settingItem} 
-                    onPress={openGitHub}
-                    accessibilityLabel="Support on GitHub"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="github" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Support on GitHub</ThemedText>
-                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.settingItem} 
+                        onPress={openGitHub}
+                        accessibilityLabel="Support on GitHub"
+                        accessibilityRole="button"
+                    >
+                        <MaterialCommunityIcons name="github" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ThemedText style={styles.settingText}>Support on GitHub</ThemedText>
+                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.settingItem}
-                    onPress={() => handleSettingPress('Legal & About')}
-                    accessibilityLabel="Legal information and about"
-                    accessibilityRole="button"
-                >
-                    <MaterialCommunityIcons name="information-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    <ThemedText style={styles.settingText}>Legal & About</ThemedText>
-                    <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                </TouchableOpacity>
-            </ThemedView>
+                    <TouchableOpacity 
+                        style={styles.settingItem}
+                        onPress={() => handleSettingPress('Legal & About')}
+                        accessibilityLabel="Legal information and about"
+                        accessibilityRole="button"
+                    >
+                        <MaterialCommunityIcons name="information-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ThemedText style={styles.settingText}>Legal & About</ThemedText>
+                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                    </TouchableOpacity>
+                </ThemedView>
 
-            {/* Copyright */}
-            <ThemedText style={styles.copyright}>
-                &copy; {new Date().getFullYear()} PlanIT. Made by Rongbin99.
-            </ThemedText>
+                {/* Copyright */}
+                <ThemedText style={styles.copyright}>
+                    &copy; {new Date().getFullYear()} PlanIT. Made by Rongbin99.
+                </ThemedText>
+            </ScrollView>
 
             {/* Appearance Theme Selection Action Sheet */}
             <AppearanceActionSheet 
@@ -547,6 +594,12 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
     },
     bannerContainer: {
         height: PROFILE_LAYOUT.bannerHeight,

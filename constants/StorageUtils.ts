@@ -126,14 +126,23 @@ export const saveChatToLocalStorage = async (chat: StoredChatData): Promise<void
 
 /**
  * Gets all chats from local storage
+ * @param forceRefresh - If true, ensures fresh data load (mainly for debugging)
  * @returns Array of stored chat data
  */
-export const getChatsFromLocalStorage = async (): Promise<StoredChatData[]> => {
+export const getChatsFromLocalStorage = async (forceRefresh: boolean = false): Promise<StoredChatData[]> => {
     try {
-        console.log(TAG, 'Loading chats from local storage');
+        const logPrefix = forceRefresh ? 'Force-loading' : 'Loading';
+        console.log(TAG, `${logPrefix} chats from local storage`);
+        
         const existingChatsString = await AsyncStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
         const chats: StoredChatData[] = existingChatsString ? JSON.parse(existingChatsString) : [];
-        console.log(TAG, 'Loaded chats from local storage:', chats.length);
+        
+        console.log(TAG, `${logPrefix} completed:`, {
+            count: chats.length,
+            timestamp: new Date().toISOString(),
+            forceRefresh
+        });
+        
         return chats;
     } catch (error) {
         console.error(TAG, 'Error loading chats from local storage:', error);

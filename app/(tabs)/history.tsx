@@ -11,7 +11,7 @@
 // ========================================
 // IMPORTS
 // ========================================
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, ImageBackground } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -87,7 +87,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
     {
         id: 'trip_001',
         title: 'After work friends hangout and food in downtown Toronto',
-        location: 'Toronto, Ontario, Canada',
+        location: 'Toronto, ON, Canada',
         lastUpdated: new Date(Date.now() - TIME_CONSTANTS.HOUR_MS).toISOString(),
         image: {
             id: "KHVwR0vTA-A",
@@ -101,7 +101,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
             },
             unsplash_url: "https://unsplash.com/photos/city-skyline-under-full-moon-KHVwR0vTA-A",
             location: "Toronto",
-            original_location: "Toronto, Ontario, Canada",
+            original_location: "Toronto, ON, Canada",
             search_query: "Toronto skyline",
             cached_at: "2025-07-02T02:05:42.551Z"
       },
@@ -109,7 +109,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
     {
         id: 'trip_002',
         title: 'Weekend activities for couples',
-        location: 'Montréal, Quebec, Canada',
+        location: 'Montréal, QC, Canada',
         lastUpdated: new Date(Date.now() - TIME_CONSTANTS.DAY_MS).toISOString(),
         image: {
             id: "CL9Pl-5fXBU",
@@ -123,7 +123,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
             },
             unsplash_url: "https://unsplash.com/photos/a-city-with-many-tall-buildings-CL9Pl-5fXBU",
             location: "Montreal",
-            original_location: "Montreal, Quebec, Canada",
+            original_location: "Montreal, QC, Canada",
             search_query: "Montreal skyline",
             cached_at: "2025-07-02T02:05:42.559Z"
       },
@@ -131,7 +131,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
     {
         id: 'trip_003',
         title: 'Family-friendly activities in Vancouver',
-        location: 'Vancouver, British Columbia, Canada',
+        location: 'Vancouver, BC, Canada',
         lastUpdated: new Date(Date.now() - TIME_CONSTANTS.DAY_MS * 2).toISOString(),
         image: {
             id: "Wc45W-dQFlA",
@@ -145,7 +145,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
             },
             unsplash_url: "https://unsplash.com/photos/an-aerial-view-of-a-city-and-a-harbor-Wc45W-dQFlA",
             location: "Vancouver",
-            original_location: "Vancouver, British Columbia, Canada",
+            original_location: "Vancouver, BC, Canada",
             search_query: "Vancouver skyline",
             cached_at: "2025-07-02T02:05:42.553Z"
       },
@@ -164,40 +164,118 @@ export default function HistoryScreen() {
     const [tripPlanHistory, setTripPlanHistory] = useState<TripPlanHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
+    const [cacheRefreshing, setCacheRefreshing] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+    
+    // Ref to track if component is mounted
+    const isMountedRef = useRef(true);
 
     // Effects
     useEffect(() => {
         console.log(TAG, 'Screen initialized with state:', {
             tripPlanCount: tripPlanHistory.length,
             isLoading,
-            refreshing
+            refreshing,
+            cacheRefreshing,
+            lastUpdateTime: lastUpdateTime > 0 ? new Date(lastUpdateTime).toISOString() : 'never'
         });
-    }, [tripPlanHistory, isLoading, refreshing]);
+        
+        // Cleanup function to set mounted state
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, [tripPlanHistory, isLoading, refreshing, cacheRefreshing, lastUpdateTime]);
+
+    /**
+     * Initial data load with automatic refresh on component mount
+     */
+    useEffect(() => {
+        console.log(TAG, 'Component mounted, triggering initial refresh');
+        
+        const initializeScreen = async () => {
+            try {
+                // Set refreshing state to show loading indicator
+                setRefreshing(true);
+                
+                // Perform initial data load with forced refresh to get latest data
+                await loadTripPlanHistoryWithCache(true);
+                
+                // Mark as initialized
+                setIsInitialized(true);
+                
+                console.log(TAG, 'Initial screen refresh completed successfully');
+            } catch (error) {
+                console.error(TAG, 'Initial screen refresh failed:', error);
+            } finally {
+                setRefreshing(false);
+            }
+        };
+        
+        initializeScreen();
+    }, []); // Empty dependency array ensures this only runs on mount
     
     /**
      * Load trip plan history when screen comes into focus
      * Uses useFocusEffect to refresh data when user returns to this tab
+     * Includes a small delay to ensure any save operations from other screens complete
+     * Skips initial mount since that's handled by the initialization useEffect
      */
     useFocusEffect(
         useCallback(() => {
-            console.log(TAG, 'Screen focused, loading trip plan history');
-            loadTripPlanHistory();
-        }, [])
+            // Skip if not initialized yet (initial mount is handled elsewhere)
+            if (!isInitialized) {
+                console.log(TAG, 'Screen focused but not initialized yet, skipping');
+                return;
+            }
+            
+            console.log(TAG, 'Screen focused, loading trip plan history with cache check');
+            
+            // Add a small delay to ensure any pending save operations complete
+            // This prevents race conditions when navigating back from chat screens
+            const loadWithDelay = async () => {
+                // Set cache refreshing state for visual feedback
+                setCacheRefreshing(true);
+                
+                // Small delay to allow storage operations to complete
+                await new Promise(resolve => setTimeout(resolve, 150));
+                
+                // Only proceed if component is still mounted
+                if (isMountedRef.current) {
+                    await loadTripPlanHistoryWithCache();
+                }
+                
+                // Clear cache refreshing state
+                setCacheRefreshing(false);
+            };
+            
+            loadWithDelay();
+        }, [isInitialized])
     );
 
     // Data management
     
     /**
-     * Loads and handles trip plan history from local storage and API with merging
+     * Loads trip plan history with improved caching mechanism
+     * Forces fresh load from storage to ensure latest data is displayed
+     * @param forceRefresh - If true, always attempts to fetch from API regardless of local data
      */
-    const loadTripPlanHistory = async (): Promise<void> => {
+    const loadTripPlanHistoryWithCache = async (forceRefresh: boolean = false): Promise<void> => {
         try {
-            console.log(TAG, 'Starting trip plan history loading process');
+            console.log(TAG, 'Starting trip plan history loading with cache management', {
+                forceRefresh,
+                isInitialized,
+                isAuthenticated
+            });
             setIsLoading(true);
             
-            // First, load from local storage for immediate display
-            const localTripPlans = await loadTripPlanHistoryFromStorage();
-            console.log(TAG, 'Loaded', localTripPlans.length, 'trip plans from local storage');
+            // Force fresh load from local storage (bypass any potential cache issues)
+            const localTripPlans = await forceLoadFromStorage();
+            console.log(TAG, 'Force-loaded', localTripPlans.length, 'trip plans from storage');
+            
+            // Update last update time for cache tracking
+            const currentTime = Date.now();
+            setLastUpdateTime(currentTime);
             
             // Skip API fetching in demo mode
             if (DEMO_MODE) {
@@ -213,8 +291,8 @@ export default function HistoryScreen() {
                 return;
             }
             
-            // For authenticated users, show local data immediately for better UX
-            if (localTripPlans.length > 0) {
+            // For authenticated users, show local data immediately for better UX (unless forcing refresh)
+            if (localTripPlans.length > 0 && !forceRefresh) {
                 setTripPlanHistory(localTripPlans);
             }
             
@@ -233,23 +311,27 @@ export default function HistoryScreen() {
                 // individually when created. This avoids overwriting newer local data.
             } catch (apiError) {
                 console.error(TAG, 'API fetch failed for authenticated user, using local data:', apiError);
-
+                // If we don't have local data and API failed, show the local data anyway
+                if (localTripPlans.length > 0 && forceRefresh) {
+                    setTripPlanHistory(localTripPlans);
+                }
             }
         } catch (error) {
             console.error(TAG, 'Error loading trip plan history:', error);
             handleLoadError();
         } finally {
             setIsLoading(false);
-            console.log(TAG, 'Trip plan history load process completed');
+            console.log(TAG, 'Trip plan history load process completed with cache update');
         }
     };
 
     /**
-     * Loads trip plan history from local storage using AsyncStorage
+     * Forces a fresh load from storage, bypassing any potential cache issues
+     * This ensures we always get the most recent data when returning to the history screen
      */
-    const loadTripPlanHistoryFromStorage = async (): Promise<TripPlanHistoryItem[]> => {
+    const forceLoadFromStorage = async (): Promise<TripPlanHistoryItem[]> => {
         try {
-            console.log(TAG, 'Loading trip plan history from local storage');
+            console.log(TAG, 'Force loading fresh data from local storage');
             
             // If demo mode is enabled, use sample data
             if (DEMO_MODE) {
@@ -257,16 +339,34 @@ export default function HistoryScreen() {
                 return SAMPLE_TRIP_PLAN_DATA;
             }
             
-            // Load from AsyncStorage using utility
-            const storedChats = await getChatsFromLocalStorage();
+            // Force a fresh read from AsyncStorage (no caching)
+            const storedChats = await getChatsFromLocalStorage(true); // Force refresh
             const tripPlans = convertChatsToHistoryItems(storedChats);
             
-            console.log(TAG, 'Loaded', tripPlans.length, 'trip plans from local storage');
+            console.log(TAG, 'Force-loaded', tripPlans.length, 'trip plans from storage at', new Date().toISOString());
             return tripPlans;
         } catch (error) {
-            console.error(TAG, 'Error loading from storage:', error);
+            console.error(TAG, 'Error force loading from storage:', error);
             return [];
         }
+    };
+
+    /**
+     * Legacy function - replaced by loadTripPlanHistoryWithCache for better caching
+     * Loads and handles trip plan history from local storage and API with merging
+     */
+    const loadTripPlanHistory = async (): Promise<void> => {
+        // Redirect to the new cache-aware function
+        await loadTripPlanHistoryWithCache();
+    };
+
+    /**
+     * Loads trip plan history from local storage using AsyncStorage
+     * Legacy function - replaced by forceLoadFromStorage for better cache management
+     */
+    const loadTripPlanHistoryFromStorage = async (): Promise<TripPlanHistoryItem[]> => {
+        // Redirect to the new force load function
+        return await forceLoadFromStorage();
     };
 
     /**
@@ -335,14 +435,25 @@ export default function HistoryScreen() {
     };
 
     /**
-     * Handles pull-to-refresh functionality
+     * Handles pull-to-refresh functionality with forced cache refresh
      */
     const onRefresh = async (): Promise<void> => {
-        console.log(TAG, 'Pull-to-refresh triggered');
+        console.log(TAG, 'Pull-to-refresh triggered - forcing cache refresh');
         setRefreshing(true);
-        await loadTripPlanHistory();
-        setRefreshing(false);
-        console.log(TAG, 'Pull-to-refresh completed');
+        
+        try {
+            // Force a fresh load with cache refresh and bypass local data display
+            await loadTripPlanHistoryWithCache(true);
+            
+            // Update last update time to track refresh
+            setLastUpdateTime(Date.now());
+            
+            console.log(TAG, 'Pull-to-refresh completed successfully');
+        } catch (error) {
+            console.error(TAG, 'Pull-to-refresh failed:', error);
+        } finally {
+            setRefreshing(false);
+        }
     };
 
     /**
@@ -358,7 +469,7 @@ export default function HistoryScreen() {
                     text: 'Try Again',
                     onPress: () => {
                         console.log(TAG, 'User chose to retry loading');
-                        loadTripPlanHistory();
+                        loadTripPlanHistoryWithCache(false);
                     },
                 },
                 {
@@ -505,7 +616,7 @@ export default function HistoryScreen() {
             console.error(TAG, 'Error during trip plan deletion:', error);
             // Rollback on error
             console.warn(TAG, 'Rolling back deletion, reloading trip plan history');
-            loadTripPlanHistory();
+            loadTripPlanHistoryWithCache(false);
             Alert.alert('Error', 'Failed to delete trip plan. Please try again.');
         }
     };
@@ -734,20 +845,32 @@ export default function HistoryScreen() {
     };
 
     /**
-     * Renders header section with title and PlanIT count
+     * Renders header section with title, PlanIT count, and cache status
      * @returns JSX element for header
      */
     const renderHeader = (): React.ReactElement => {
         console.log(TAG, 'Rendering header with', tripPlanHistory.length, 'trip plans');
+        
+        // Format last update time for display
+        const lastUpdateText = lastUpdateTime > 0 
+            ? `Updated ${formatTimestamp(new Date(lastUpdateTime).toISOString())}`
+            : '';
         
         return (
             <View style={styles.header}>
                 <ThemedText type="title" style={styles.headerTitle}>
                     Your PlanITs
                 </ThemedText>
-                <ThemedText type="default" style={styles.headerSubtitle}>
-                    {tripPlanHistory.length} trip plan{tripPlanHistory.length !== 1 ? 's' : ''}
-                </ThemedText>
+                <View style={styles.headerSubtitleContainer}>
+                    <ThemedText type="default" style={styles.headerSubtitle}>
+                        {tripPlanHistory.length} trip plan{tripPlanHistory.length !== 1 ? 's' : ''}
+                    </ThemedText>
+                    {(cacheRefreshing || lastUpdateText) && (
+                        <ThemedText type="default" style={styles.headerCacheStatus}>
+                            {cacheRefreshing ? 'Refreshing...' : lastUpdateText}
+                        </ThemedText>
+                    )}
+                </View>
             </View>
         );
     };
@@ -832,9 +955,19 @@ const styles = StyleSheet.create({
         fontWeight: TYPOGRAPHY.fontWeight.bold,
         marginBottom: SPACING.xs,
     },
+    headerSubtitleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     headerSubtitle: {
         fontSize: TYPOGRAPHY.fontSize.base,
         color: COLORS.lightText,
+    },
+    headerCacheStatus: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.primary,
+        fontStyle: 'italic',
     },
     
     // Trip Plan List
