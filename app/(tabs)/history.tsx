@@ -15,7 +15,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, ImageBackground } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { MapPin, Trash2, Leaf } from 'lucide-react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TIME_CONSTANTS } from '@/constants/DesignTokens';
@@ -742,8 +742,7 @@ export default function HistoryScreen() {
                                 {/* Item Footer: Location and Delete Button */}
                                 <View style={styles.tripPlanFooter}>
                                     <View style={styles.locationCount}>
-                                        <MaterialCommunityIcons 
-                                            name="map-marker-outline" 
+                                        <MapPin 
                                             size={ICON_SIZES.sm} 
                                             color={COLORS.white} 
                                         />
@@ -758,8 +757,7 @@ export default function HistoryScreen() {
                                         accessibilityRole="button"
                                         accessibilityLabel="Delete trip plan"
                                     >
-                                        <MaterialCommunityIcons 
-                                            name="delete-outline" 
+                                        <Trash2 
                                             size={ICON_SIZES.md} 
                                             color={COLORS.white} 
                                         />
@@ -784,8 +782,7 @@ export default function HistoryScreen() {
                         {/* Item Footer: Location and Delete Button */}
                         <View style={styles.tripPlanFooter}>
                             <View style={styles.locationCount}>
-                                <MaterialCommunityIcons 
-                                    name="map-marker-outline" 
+                                <MapPin 
                                     size={ICON_SIZES.sm} 
                                     color={COLORS.lightText} 
                                 />
@@ -800,8 +797,7 @@ export default function HistoryScreen() {
                                 accessibilityRole="button"
                                 accessibilityLabel="Delete trip plan"
                             >
-                                <MaterialCommunityIcons 
-                                    name="delete-outline" 
+                                <Trash2 
                                     size={ICON_SIZES.md} 
                                     color={COLORS.lightText} 
                                 />
@@ -822,8 +818,7 @@ export default function HistoryScreen() {
         
         return (
             <View style={styles.emptyState}>
-                <MaterialCommunityIcons 
-                    name="cactus" 
+                <Leaf 
                     size={96} 
                     color={COLORS.lightText} 
                 />

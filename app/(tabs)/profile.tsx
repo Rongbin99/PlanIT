@@ -15,7 +15,7 @@ import { Platform, StyleSheet, TouchableOpacity, View, Linking, Alert, ActivityI
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { ChevronRight, ChevronDown, Map, Star, ExternalLink, RefreshCw, Github, UserRoundPen, SunMoon, RotateCcwKey } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import AppearanceActionSheet, { showAppearanceSheet } from '@/components/AppearanceActionSheet';
 import MapsProviderActionSheet, { MapsProviderActionSheetRef } from '@/components/MapsProviderActionSheet';
@@ -507,9 +507,9 @@ export default function ProfileScreen() {
                         accessibilityLabel="Account settings"
                         accessibilityRole="button"
                     >
-                        <MaterialCommunityIcons name="account-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <UserRoundPen size={ICON_SIZES.xl} color={COLORS.lightText} />
                         <ThemedText style={styles.settingText}>Account</ThemedText>
-                        <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ChevronRight size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -518,9 +518,9 @@ export default function ProfileScreen() {
                         accessibilityLabel="Change password settings"
                         accessibilityRole="button"
                     >
-                        <MaterialCommunityIcons name="lock-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <RotateCcwKey size={ICON_SIZES.xl} color={COLORS.lightText} />
                         <ThemedText style={styles.settingText}>Change Password</ThemedText>
-                        <MaterialCommunityIcons name="chevron-right" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ChevronRight size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -529,9 +529,9 @@ export default function ProfileScreen() {
                         accessibilityLabel="Appearance settings"
                         accessibilityRole="button"
                     >
-                        <MaterialCommunityIcons name="palette-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <SunMoon size={ICON_SIZES.xl} color={COLORS.lightText} />
                         <ThemedText style={styles.settingText}>Appearance</ThemedText>
-                        <MaterialCommunityIcons name="chevron-down" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ChevronDown size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
 
                     {/* Maps Provider (iOS only) */}
@@ -542,9 +542,9 @@ export default function ProfileScreen() {
                             accessibilityLabel="Maps Provider settings"
                             accessibilityRole="button"
                         >
-                            <MaterialCommunityIcons name="map-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                            <Map size={ICON_SIZES.xl} color={COLORS.lightText} />
                             <ThemedText style={styles.settingText}>Maps Provider</ThemedText>
-                            <MaterialCommunityIcons name="chevron-down" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                            <ChevronDown size={ICON_SIZES.xl} color={COLORS.lightText} />
                         </TouchableOpacity>
                     ) : null}
 
@@ -554,9 +554,9 @@ export default function ProfileScreen() {
                         accessibilityLabel="Rate the app"
                         accessibilityRole="button"
                     >
-                        <MaterialCommunityIcons name="star-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <Star size={ICON_SIZES.xl} color={COLORS.lightText} />
                         <ThemedText style={styles.settingText}>Rate Us</ThemedText>
-                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ExternalLink size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -565,9 +565,9 @@ export default function ProfileScreen() {
                         accessibilityLabel="Check for app updates"
                         accessibilityRole="button"
                     >
-                        <MaterialCommunityIcons name="update" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <RefreshCw size={ICON_SIZES.xl} color={COLORS.lightText} />
                         <ThemedText style={styles.settingText}>Check for Updates</ThemedText>
-                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ExternalLink size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -576,9 +576,9 @@ export default function ProfileScreen() {
                         accessibilityLabel="Support on GitHub"
                         accessibilityRole="button"
                     >
-                        <MaterialCommunityIcons name="github" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <Github size={ICON_SIZES.xl} color={COLORS.lightText} />
                         <ThemedText style={styles.settingText}>Support on GitHub</ThemedText>
-                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ExternalLink size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
                 </ThemedView>
 

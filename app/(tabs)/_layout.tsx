@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 
 // Component imports
 import { HapticTab } from '@/components/HapticTab';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Route, MapPinned, UserRound } from 'lucide-react-native';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -41,21 +41,21 @@ export default function TabLayout() {
                 name="index"
                 options={{
                     title: 'Explore',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="map-search" color={color} />,
+                    tabBarIcon: ({ color }) => <MapPinned size={24} color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="history"
                 options={{
                     title: 'Adventures',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="bookmark-outline" color={color} />,
+                    tabBarIcon: ({ color }) => <Route size={24} color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="profile"
                 options={{
                     title: 'You',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons size={24} name="account-circle" color={color} />,
+                    tabBarIcon: ({ color }) => <UserRound size={24} color={color} />,
                 }}
             />
         </Tabs>
@@ -64,3 +64,4 @@ export default function TabLayout() {
 
 // https://icons.expo.fyi/Index
 // filter by material community icons
+// https://lucide.dev/icons/

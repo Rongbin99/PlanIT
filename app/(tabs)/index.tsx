@@ -15,6 +15,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert, Dimensions, ActivityIndicator, FlatList, BackHandler } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { ArrowLeft, LoaderCircle, LocateFixed, LocateOff, Send } from 'lucide-react-native';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
 import ActionSheet, { SheetManager } from 'react-native-actions-sheet';
@@ -515,15 +516,6 @@ export default function HomeScreen() {
     };
 
     /**
-     * Handles price range selection
-     * @param value - The numeric price range value (1-4)
-     */
-    const handlePriceRangeChange = (value: PriceRangeValue): void => {
-        console.log(TAG, 'Price range changed from', priceRange, 'to', value, `(${PRICE_RANGE_MAP[value]})`);
-        setPriceRange(value);
-    };
-
-    /**
      * Handles Plan Food button press - shows custom action sheet with price options if not active, toggles off if active
      */
     const handlePlanFoodPress = (): void => {
@@ -750,8 +742,7 @@ export default function HomeScreen() {
                                 onPress={closeDropdown}
                                 accessibilityLabel="Close filters"
                             >
-                                <MaterialCommunityIcons 
-                                    name="arrow-left" 
+                                <ArrowLeft 
                                     size={HOME_ICON_SIZES.back} 
                                     color={COLORS.secondary} 
                                 />
@@ -814,11 +805,7 @@ export default function HomeScreen() {
                             disabled={isLoading || !inputValue.trim()}
                             accessibilityLabel="Send search query"
                         >
-                            <MaterialCommunityIcons 
-                                name={isLoading ? "loading" : "send"} 
-                                size={HOME_ICON_SIZES.send} 
-                                color={sendButtonColor} 
-                            />
+                            {isLoading ? <LoaderCircle size={HOME_ICON_SIZES.send} color={sendButtonColor} /> : <Send size={HOME_ICON_SIZES.send} color={sendButtonColor} />}
                         </TouchableOpacity>
                     </View>
                 </Animated.View>
@@ -1027,11 +1014,7 @@ export default function HomeScreen() {
                             color={COLORS.primary} 
                         />
                     ) : (
-                        <MaterialCommunityIcons 
-                            name={hasUserLocation ? "crosshairs-gps" : "crosshairs"} 
-                            size={HOME_ICON_SIZES.filter} 
-                            color={hasUserLocation ? COLORS.primary : COLORS.secondary} 
-                        />
+                        hasUserLocation ? <LocateFixed size={HOME_ICON_SIZES.filter} color={COLORS.primary} /> : <LocateOff size={HOME_ICON_SIZES.filter} color={COLORS.secondary} />
                     )}
                 </TouchableOpacity>
             </View>

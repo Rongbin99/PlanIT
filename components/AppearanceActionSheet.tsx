@@ -12,7 +12,7 @@
 // ========================================
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, FlatList, Text, Alert } from 'react-native';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Moon, SunMedium, SunMoon, CircleCheckBig } from 'lucide-react-native';
 import ActionSheet, { SheetManager } from 'react-native-actions-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES } from '@/constants/DesignTokens';
@@ -181,12 +181,25 @@ export default function AppearanceActionSheet({ onThemeChange }: AppearanceActio
             accessibilityState={{ selected: selectedTheme === item.id }}
         >
             <View style={styles.themeOptionContent}>
-                <MaterialCommunityIcons
-                    name={item.icon as any}
-                    size={ICON_SIZES.xl}
-                    color={selectedTheme === item.id ? COLORS.primary : COLORS.lightText}
-                    style={styles.themeIcon}
-                />
+                {item.id === 'light' ? (
+                    <SunMedium
+                        size={ICON_SIZES.xl}
+                        color={selectedTheme === item.id ? COLORS.primary : COLORS.lightText}
+                        style={styles.themeIcon}
+                    />
+                ) : item.id === 'dark' ? (
+                    <Moon
+                        size={ICON_SIZES.xl}
+                        color={selectedTheme === item.id ? COLORS.primary : COLORS.lightText}
+                        style={styles.themeIcon}
+                    />
+                ) : (
+                    <SunMoon
+                        size={ICON_SIZES.xl}
+                        color={selectedTheme === item.id ? COLORS.primary : COLORS.lightText}
+                        style={styles.themeIcon}
+                    />
+                )}
                 <View style={styles.themeTextContainer}>
                     <Text style={[
                         styles.themeOptionTitle,
@@ -202,8 +215,7 @@ export default function AppearanceActionSheet({ onThemeChange }: AppearanceActio
                     </Text>
                 </View>
                 {selectedTheme === item.id && (
-                    <MaterialCommunityIcons
-                        name="check-circle"
+                    <CircleCheckBig
                         size={ICON_SIZES.xl}
                         color={COLORS.primary}
                     />

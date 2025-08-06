@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { View, Text, TouchableOpacity, Platform, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, Platform, StyleSheet } from 'react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { FlashList } from '@shopify/flash-list';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Circle, CircleCheckBig } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
 import { getMapProvider, setMapProvider, MAP_PROVIDER_OPTIONS, MapProviderType } from '@/constants/MapProvider';
 
@@ -80,12 +80,19 @@ const MapsProviderActionSheet = forwardRef<MapsProviderActionSheetRef, MapsProvi
         accessibilityRole="button"
         accessibilityState={{ selected: selected === item.value }}
       >
-        <MaterialCommunityIcons
-          name={selected === item.value ? 'check-circle' : 'circle-outline'}
-          size={ICON_SIZES.lg}
-          color={selected === item.value ? COLORS.primary : COLORS.lightText}
-          style={{ marginRight: 8 }}
-        />
+        {selected === item.value ? (
+          <CircleCheckBig
+            size={ICON_SIZES.lg}
+            color={COLORS.primary}
+            style={{ marginRight: 8 }}
+          />
+        ) : (
+          <Circle
+            size={ICON_SIZES.lg}
+            color={COLORS.lightText}
+            style={{ marginRight: 8 }}
+          />
+        )}
         <Text style={[
           styles.highlightButtonText,
           selected === item.value && styles.highlightButtonTextSelected,

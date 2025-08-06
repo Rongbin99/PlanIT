@@ -12,7 +12,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { router, Stack } from 'expo-router';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Mail, Save, LogOut, LogIn, LoaderCircle, CircleUserRound, UserRoundPlus, IdCardLanyard } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -246,8 +246,7 @@ export default function AccountScreen() {
                 />
                 <ThemedView style={styles.container}>
                     <View style={styles.loadingContainer}>
-                        <MaterialCommunityIcons 
-                            name="loading" 
+                        <LoaderCircle 
                             size={ICON_SIZES.xxl} 
                             color={COLORS.primary} 
                         />
@@ -283,8 +282,7 @@ export default function AccountScreen() {
                                     Name
                                 </ThemedText>
                                 <View style={styles.inputContainer}>
-                                    <MaterialCommunityIcons 
-                                        name="account" 
+                                    <IdCardLanyard 
                                         size={ICON_SIZES.lg} 
                                         color={COLORS.lightText} 
                                         style={styles.inputIcon}
@@ -308,8 +306,7 @@ export default function AccountScreen() {
                                     Email
                                 </ThemedText>
                                 <View style={styles.inputContainer}>
-                                    <MaterialCommunityIcons 
-                                        name="email" 
+                                    <Mail 
                                         size={ICON_SIZES.lg} 
                                         color={COLORS.lightText} 
                                         style={styles.inputIcon}
@@ -339,11 +336,7 @@ export default function AccountScreen() {
                                 accessibilityLabel="Save account information"
                                 accessibilityRole="button"
                             >
-                                <MaterialCommunityIcons
-                                    name={isSaving ? "loading" : "content-save"}
-                                    size={ICON_SIZES.lg}
-                                    color={COLORS.white}
-                                />
+                                {isSaving ? <LoaderCircle size={ICON_SIZES.lg} color={COLORS.white} /> : <Save size={ICON_SIZES.lg} color={COLORS.white} />}
                                 <Text style={styles.buttonText}>
                                     {isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes'}
                                 </Text>
@@ -356,8 +349,7 @@ export default function AccountScreen() {
                                 accessibilityLabel="Logout from account"
                                 accessibilityRole="button"
                             >
-                                <MaterialCommunityIcons
-                                    name="logout"
+                                <LogOut
                                     size={ICON_SIZES.lg}
                                     color={COLORS.white}
                                 />
@@ -370,8 +362,7 @@ export default function AccountScreen() {
                         <>
                             {/* Not Logged In State */}
                             <View style={styles.authContainer}>
-                                <MaterialCommunityIcons 
-                                    name="account-circle" 
+                                <CircleUserRound 
                                     size={80} 
                                     color={COLORS.lightText} 
                                     style={styles.authIcon}
@@ -390,8 +381,7 @@ export default function AccountScreen() {
                                     accessibilityLabel="Login to account"
                                     accessibilityRole="button"
                                 >
-                                    <MaterialCommunityIcons
-                                        name="login"
+                                    <LogIn
                                         size={ICON_SIZES.lg}
                                         color={COLORS.white}
                                     />
@@ -407,8 +397,7 @@ export default function AccountScreen() {
                                     accessibilityLabel="Sign up for account"
                                     accessibilityRole="button"
                                 >
-                                    <MaterialCommunityIcons
-                                        name="account-plus"
+                                    <UserRoundPlus
                                         size={ICON_SIZES.lg}
                                         color={COLORS.primary}
                                     />

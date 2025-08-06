@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, Stack } from 'expo-router';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Mail, LogIn, Eye, EyeOff, UserRound, KeyRound, LoaderCircle } from 'lucide-react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
@@ -152,8 +152,7 @@ export default function LoginScreen() {
                     >
                         {/* Title Section */}
                         <View style={styles.titleSection}>
-                            <MaterialCommunityIcons 
-                                name="account-circle" 
+                            <UserRound 
                                 size={80} 
                                 color={COLORS.primary} 
                                 style={styles.titleIcon}
@@ -172,8 +171,7 @@ export default function LoginScreen() {
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Email Address</Text>
                                 <View style={[styles.inputWrapper, emailError && styles.inputError]}>
-                                    <MaterialCommunityIcons
-                                        name="email-outline"
+                                    <Mail
                                         size={ICON_SIZES.md}
                                         color={emailError ? COLORS.error : COLORS.lightText}
                                         style={styles.inputIcon}
@@ -200,8 +198,7 @@ export default function LoginScreen() {
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Password</Text>
                                 <View style={[styles.inputWrapper, passwordError && styles.inputError]}>
-                                    <MaterialCommunityIcons
-                                        name="lock-outline"
+                                    <KeyRound
                                         size={ICON_SIZES.md}
                                         color={passwordError ? COLORS.error : COLORS.lightText}
                                         style={styles.inputIcon}
@@ -227,11 +224,7 @@ export default function LoginScreen() {
                                         accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                                         accessibilityRole="button"
                                     >
-                                        <MaterialCommunityIcons
-                                            name={showPassword ? "eye-off" : "eye"}
-                                            size={ICON_SIZES.md}
-                                            color={COLORS.lightText}
-                                        />
+                                        {showPassword ? <EyeOff size={ICON_SIZES.md} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.md} color={COLORS.lightText} />}
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -246,8 +239,7 @@ export default function LoginScreen() {
                             >
                                 {isLoading || authLoading ? (
                                     <View style={styles.loadingContainer}>
-                                        <MaterialCommunityIcons
-                                            name="loading"
+                                        <LoaderCircle
                                             size={ICON_SIZES.md}
                                             color={COLORS.white}
                                             style={styles.loadingIcon}
@@ -258,8 +250,7 @@ export default function LoginScreen() {
                                     </View>
                                 ) : (
                                     <View style={styles.buttonContent}>
-                                        <MaterialCommunityIcons
-                                            name="login"
+                                        <LogIn
                                             size={ICON_SIZES.md}
                                             color={COLORS.white}
                                         />

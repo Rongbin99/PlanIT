@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, Stack } from 'expo-router';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Mail, LockKeyhole, Eye, EyeOff, UserRoundPlus, IdCardLanyard, LockKeyholeOpen, LoaderCircle } from 'lucide-react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
@@ -216,8 +216,7 @@ export default function SignupScreen() {
                     >
                         {/* Title Section */}
                         <View style={styles.titleSection}>
-                            <MaterialCommunityIcons 
-                                name="account-plus" 
+                            <UserRoundPlus 
                                 size={80} 
                                 color={COLORS.primary} 
                                 style={styles.titleIcon}
@@ -236,8 +235,7 @@ export default function SignupScreen() {
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Full Name</Text>
                                 <View style={[styles.inputWrapper, nameError && styles.inputError]}>
-                                    <MaterialCommunityIcons
-                                        name="account-outline"
+                                    <IdCardLanyard 
                                         size={ICON_SIZES.md}
                                         color={nameError ? COLORS.error : COLORS.lightText}
                                         style={styles.inputIcon}
@@ -263,8 +261,7 @@ export default function SignupScreen() {
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Email Address</Text>
                                 <View style={[styles.inputWrapper, emailError && styles.inputError]}>
-                                    <MaterialCommunityIcons
-                                        name="email-outline"
+                                    <Mail
                                         size={ICON_SIZES.md}
                                         color={emailError ? COLORS.error : COLORS.lightText}
                                         style={styles.inputIcon}
@@ -288,8 +285,7 @@ export default function SignupScreen() {
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Password</Text>
                                 <View style={[styles.inputWrapper, passwordError && styles.inputError]}>
-                                    <MaterialCommunityIcons
-                                        name="lock-outline"
+                                    <LockKeyholeOpen
                                         size={ICON_SIZES.md}
                                         color={passwordError ? COLORS.error : COLORS.lightText}
                                         style={styles.inputIcon}
@@ -312,11 +308,7 @@ export default function SignupScreen() {
                                         accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                                         accessibilityRole="button"
                                     >
-                                        <MaterialCommunityIcons
-                                            name={showPassword ? "eye-off" : "eye"}
-                                            size={ICON_SIZES.md}
-                                            color={COLORS.lightText}
-                                        />
+                                        {showPassword ? <EyeOff size={ICON_SIZES.md} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.md} color={COLORS.lightText} />}
                                     </TouchableOpacity>
                                 </View>
                                 <ThemedText style={styles.helpText}>
@@ -328,8 +320,7 @@ export default function SignupScreen() {
                             <View style={styles.inputContainer}>
                                 <Text style={styles.label}>Confirm Password</Text>
                                 <View style={[styles.inputWrapper, confirmPasswordError && styles.inputError]}>
-                                    <MaterialCommunityIcons
-                                        name="lock-check-outline"
+                                    <LockKeyhole 
                                         size={ICON_SIZES.md}
                                         color={confirmPasswordError ? COLORS.error : COLORS.lightText}
                                         style={styles.inputIcon}
@@ -352,11 +343,7 @@ export default function SignupScreen() {
                                         accessibilityLabel={showConfirmPassword ? "Hide password" : "Show password"}
                                         accessibilityRole="button"
                                     >
-                                        <MaterialCommunityIcons
-                                            name={showConfirmPassword ? "eye-off" : "eye"}
-                                            size={ICON_SIZES.md}
-                                            color={COLORS.lightText}
-                                        />
+                                        {showConfirmPassword ? <EyeOff size={ICON_SIZES.md} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.md} color={COLORS.lightText} />}
                                     </TouchableOpacity>
                                 </View>
                                 <ThemedText style={styles.helpText}>
@@ -374,8 +361,7 @@ export default function SignupScreen() {
                             >
                                 {isLoading || authLoading ? (
                                     <View style={styles.loadingContainer}>
-                                        <MaterialCommunityIcons
-                                            name="loading"
+                                        <LoaderCircle
                                             size={ICON_SIZES.md}
                                             color={COLORS.white}
                                             style={styles.loadingIcon}
@@ -386,8 +372,7 @@ export default function SignupScreen() {
                                     </View>
                                 ) : (
                                     <View style={styles.buttonContent}>
-                                        <MaterialCommunityIcons
-                                            name="account-plus"
+                                        <UserRoundPlus
                                             size={ICON_SIZES.md}
                                             color={COLORS.white}
                                         />

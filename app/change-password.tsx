@@ -12,7 +12,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { router, Stack } from 'expo-router';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Eye, EyeOff, RotateCcwKey } from 'lucide-react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
@@ -203,11 +203,7 @@ export default function ChangePasswordScreen() {
                             onPress={() => setShowCurrentPassword(!showCurrentPassword)}
                             accessibilityLabel={showCurrentPassword ? "Hide password" : "Show password"}
                         >
-                            <MaterialCommunityIcons
-                                name={showCurrentPassword ? "eye-off" : "eye"}
-                                size={ICON_SIZES.lg}
-                                color={COLORS.lightText}
-                            />
+                            {showCurrentPassword ? <EyeOff size={ICON_SIZES.lg} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.lg} color={COLORS.lightText} />}
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -234,11 +230,7 @@ export default function ChangePasswordScreen() {
                             onPress={() => setShowNewPassword(!showNewPassword)}
                             accessibilityLabel={showNewPassword ? "Hide password" : "Show password"}
                         >
-                            <MaterialCommunityIcons
-                                name={showNewPassword ? "eye-off" : "eye"}
-                                size={ICON_SIZES.lg}
-                                color={COLORS.lightText}
-                            />
+                            {showNewPassword ? <EyeOff size={ICON_SIZES.lg} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.lg} color={COLORS.lightText} />}
                         </TouchableOpacity>
                     </View>
                     <ThemedText style={styles.helpText}>
@@ -268,11 +260,7 @@ export default function ChangePasswordScreen() {
                             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                             accessibilityLabel={showConfirmPassword ? "Hide password" : "Show password"}
                         >
-                            <MaterialCommunityIcons
-                                name={showConfirmPassword ? "eye-off" : "eye"}
-                                size={ICON_SIZES.lg}
-                                color={COLORS.lightText}
-                            />
+                            {showConfirmPassword ? <EyeOff size={ICON_SIZES.lg} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.lg} color={COLORS.lightText} />}
                         </TouchableOpacity>
                     </View>
                     <ThemedText style={styles.helpText}>
@@ -298,8 +286,7 @@ export default function ChangePasswordScreen() {
                         />
                     ) : (
                         <>
-                            <MaterialCommunityIcons
-                                name="lock-reset"
+                            <RotateCcwKey
                                 size={ICON_SIZES.xl}
                                 color={COLORS.white}
                             />

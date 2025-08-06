@@ -16,15 +16,18 @@
 // ========================================
 // IMPORTS
 // ========================================
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert, Linking, Image } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import ActionSheet, { SheetManager } from 'react-native-actions-sheet';
+import { Star, Tag, Clock, Globe, Phone, MapPin, Route, Lightbulb, RotateCw, Search, Hourglass, ExternalLink, ChevronLeft, MapPinned, Footprints, TrainFrontTunnel, BusFront, TramFront, TrainFront, Ship, Info } from 'lucide-react-native';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { FlashList } from '@shopify/flash-list';
+import MapView, { Marker } from 'react-native-maps';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '@/constants/DesignTokens';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ICON_SIZES } from '@/constants/DesignTokens';
 import { saveChatToLocalStorage as saveToStorage, StoredChatData, getChatsFromLocalStorage } from '@/constants/StorageUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import { getMapProvider } from '@/constants/MapProvider';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -122,14 +125,12 @@ interface ApiResponse {
 }
 
 /**
- * ActionSheet item structure
+ * Detail section structure for expanded view
  */
-interface ActionSheetItem {
+interface DetailSection {
     id: string;
-    title: string;
-    icon: string;
-    onPress: () => void;
-    style?: 'default' | 'cancel' | 'destructive';
+    type: 'info' | 'hours' | 'actions' | 'map';
+    data: any;
 }
 
 // ========================================
@@ -204,14 +205,18 @@ export default function ChatScreen() {
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
     const [isGeneratingMapLink, setIsGeneratingMapLink] = useState(false);
     
-    // ActionSheet location for current selection
-    const [actionSheetLocation, setActionSheetLocation] = useState<Location | null>(null);
+    // Bottom sheet state
+    const [bottomSheetLocation, setBottomSheetLocation] = useState<Location | null>(null);
     
     // Animation references
     const scrollViewRef = useRef<ScrollView>(null);
     const dotAnimation = useRef(new Animated.Value(0)).current;
     const mapItButtonAnimation = useRef(new Animated.Value(1)).current;
     const lastScrollY = useRef(0);
+    
+    // Bottom sheet references
+    const bottomSheetRef = useRef<BottomSheet>(null);
+    const snapPoints = useMemo(() => ['85%'], []);
 
     // Parsed search data from navigation params
     const searchData: SearchData | null = params.searchData 
@@ -707,83 +712,104 @@ export default function ChatScreen() {
     // ========================================
     
     /**
-     * Shows ActionSheet for location options using FlatList
+     * Shows bottom sheet for location options
      * @param location - Selected location
      */
-    const showLocationActionSheet = (location: Location): void => {
-        console.log(TAG, 'Showing ActionSheet for location:', location.name);
-        setActionSheetLocation(location);
-        SheetManager.show('locationActionSheet');
+    const showLocationBottomSheet = (location: Location): void => {
+        console.log(TAG, 'Showing Location Bottom Sheet for location:', location.name);
+        setBottomSheetLocation(location);
+        bottomSheetRef.current?.snapToIndex(1);
     };
 
     /**
-     * Closes the ActionSheet modal
+     * Closes the bottom sheet modal
      */
-    const hideActionSheet = (): void => {
-        SheetManager.hide('locationActionSheet');
-        setActionSheetLocation(null);
+    const hideBottomSheet = (): void => {
+        console.log(TAG, 'Hiding Location Bottom Sheet');
+        bottomSheetRef.current?.close();
+        setBottomSheetLocation(null);
     };
 
     /**
-     * Gets action items for the ActionSheet
-     * @param location - Selected location
-     * @returns Array of action items
+     * Renders backdrop for bottom sheet
      */
-    const getActionSheetItems = (location: Location): ActionSheetItem[] => {
-        return [
+    const renderBackdrop = useCallback(
+        (props: any) => (
+            <BottomSheetBackdrop
+                {...props}
+                disappearsOnIndex={-1}
+                appearsOnIndex={0}
+                opacity={0.5}
+            />
+        ),
+        []
+    );
+
+    /**
+     * Gets detail sections for expanded view
+     * @param location - Selected location
+     * @returns Array of detail sections
+     */
+    const getDetailSections = (location: Location): DetailSection[] => {
+        const sections: DetailSection[] = [
             {
-                id: 'regenerate',
-                title: 'Re-generate Plan',
-                icon: 'refresh',
-                onPress: () => {
-                    hideActionSheet();
-                    handleRegenerateLocation(location);
-                },
-                style: 'default'
-            },
-            {
-                id: 'details',
-                title: 'View Details',
-                icon: 'information-outline',
-                onPress: () => {
-                    hideActionSheet();
-                    handleViewLocationDetails(location);
-                },
-                style: 'default'
-            },
-            {
-                id: 'directions',
-                title: 'Get Directions',
-                icon: 'directions',
-                onPress: () => {
-                    hideActionSheet();
-                    handleGetDirections(location);
-                },
-                style: 'default'
-            },
-            {
-                id: 'cancel',
-                title: 'Cancel',
-                icon: 'close',
-                onPress: hideActionSheet,
-                style: 'cancel'
+                id: 'info',
+                type: 'info',
+                data: {
+                    name: location.name,
+                    address: location.address,
+                    description: location.description,
+                    category: location.category,
+                    estimatedTime: location.estimatedTime,
+                    priceRange: location.priceRange,
+                    rating: location.rating,
+                    user_ratings_total: location.user_ratings_total,
+                    phone: location.phone
+                }
             }
         ];
+
+        // Add map section
+        if (location.google_place_id || location.address) {
+            sections.push({
+                id: 'map',
+                type: 'map',
+                data: {
+                    name: location.name,
+                    address: location.address,
+                    google_place_id: location.google_place_id
+                }
+            });
+        }
+
+        // Add hours section if available
+        if (location.opening_hours?.weekday_text && location.opening_hours.weekday_text.length > 0) {
+            sections.push({
+                id: 'hours',
+                type: 'hours',
+                data: {
+                    open_now: location.opening_hours.open_now,
+                    weekday_text: location.opening_hours.weekday_text
+                }
+            });
+        }
+
+        return sections;
     };
 
     /**
-     * Handles re-generation of plan for a specific location
-     * @param location - Location to re-generate plan for
+     * Handles re-generation of plan excluding a specific location
+     * @param location - Location to exclude when re-generating plan
      */
     const handleRegenerateLocation = (location: Location): void => {
-        console.log(TAG, 'Re-generating plan for location:', location.name);
+        console.log(TAG, 'Re-generating plan excluding location:', location.name);
         Alert.alert(
             'Re-generate Plan',
-            `Generate a new plan focused on ${location.name}?`,
+            `Generate a new plan without ${location.name}?`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 { 
-                    text: 'Re-generate', 
+                    text: 'Confirm', 
                     onPress: () => {
                         // Navigate back to search with pre-filled location
                         router.push({
@@ -800,70 +826,52 @@ export default function ChatScreen() {
     };
 
     /**
-     * Shows detailed information about a location with enhanced Google Maps data
-     * @param location - Location to show details for
+     * Handles opening website or Google search for a location
+     * @param location - Location to open website/search for
      */
-    const handleViewLocationDetails = (location: Location): void => {
-        console.log(TAG, 'Viewing details for location:', location.name);
+    const handleOpenWebsite = (location: Location): void => {
+        console.log(TAG, 'Opening website/search for location:', location.name);
         
-        let detailsText = `Address: ${location.address}\n\nDescription: ${location.description}\n\nCategory: ${location.category}\n\nEstimated Time: ${location.estimatedTime}\n\nPrice Range: ${location.priceRange}`;
-        
-        // Add enhanced Google Maps data if available
-        if (location.rating) {
-            detailsText += `\n\nRating: ${location.rating.toFixed(1)}`;
-            if (location.user_ratings_total) {
-                detailsText += ` (${location.user_ratings_total} reviews)`;
-            }
-        }
-        
-        if (location.phone) {
-            detailsText += `\n\nPhone: ${location.phone}`;
-        }
+        let url: string;
         
         if (location.website && location.website !== 'Not available') {
-            detailsText += `\n\nWebsite: ${location.website}`;
+            // Open the actual website
+            url = location.website;
+        } else {
+            // Create Google search URL
+            const searchQuery = encodeURIComponent(`${location.name} ${location.address}`);
+            url = `https://www.google.com/search?q=${searchQuery}`;
         }
         
-        if (location.opening_hours?.open_now !== undefined) {
-            detailsText += `\n\nCurrently: ${location.opening_hours.open_now ? 'Open' : 'Closed'}`;
-            if (location.opening_hours.weekday_text && location.opening_hours.weekday_text.length > 0) {
-                detailsText += `\n\nHours:\n${location.opening_hours.weekday_text.join('\n')}`;
-            }
-        }
-        
-        Alert.alert(
-            location.name,
-            detailsText,
-            [
-                { text: 'OK' },
-                ...(location.website && location.website !== 'Not available' ? [
-                    { 
-                        text: 'Visit Website', 
-                        onPress: () => {
-                            Linking.openURL(location.website!).catch((error) => {
-                                console.error(TAG, 'Failed to open website:', error);
-                                Alert.alert('Error', 'Failed to open website');
-                            });
-                        }
-                    }
-                ] : [])
-            ]
-        );
+        Linking.openURL(url).catch((error) => {
+            console.error(TAG, 'Failed to open URL:', error);
+            Alert.alert('Error', 'Failed to open website or search');
+        });
     };
 
     /**
      * Opens directions to a specific location
      * @param location - Location to get directions to
      */
-    const handleGetDirections = (location: Location): void => {
+    const handleGetDirections = async (location: Location): Promise<void> => {
         console.log(TAG, 'Getting directions to location:', location.name);
         const encodedAddress = encodeURIComponent(location.address);
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-        
-        Linking.openURL(mapsUrl).catch((error) => {
-            console.error(TAG, 'Failed to open maps:', error);
-            Alert.alert('Error', 'Failed to open maps application');
-        });
+        try {
+            const provider = await getMapProvider();
+            let mapsUrl: string;
+            if (provider === 'apple') {
+                mapsUrl = `http://maps.apple.com/?q=${encodedAddress}`;
+            } else {
+                mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+            }
+            Linking.openURL(mapsUrl).catch((error) => {
+                console.error(TAG, 'Failed to open maps:', error);
+                Alert.alert('Error', 'Failed to open maps application');
+            });
+        } catch (error) {
+            console.error(TAG, 'Error getting map provider:', error);
+            Alert.alert('Error', 'Failed to determine map provider.');
+        }
     };
 
     /**
@@ -879,6 +887,7 @@ export default function ChatScreen() {
         setIsGeneratingMapLink(true);
 
         try {
+            const provider = await getMapProvider();
             const headers = {
                 ...DEFAULT_HEADERS,
                 ...(isAuthenticated && token && { Authorization: `Bearer ${token}` })
@@ -900,10 +909,21 @@ export default function ChatScreen() {
             const result = await response.json();
             console.log(TAG, 'Generated map link:', result.mapUrl);
 
-            // Open the map link
-            Linking.openURL(result.mapUrl).catch((error) => {
+            let mapUrl = result.mapUrl;
+            if (provider === 'apple') {
+                // Try to convert Google Maps URL to Apple Maps format (best effort)
+                // We'll just use the first location as destination for Apple Maps
+                const dest = encodeURIComponent(locations[locations.length - 1].address);
+                mapUrl = `http://maps.apple.com/?daddr=${dest}`;
+            }
+
+            Linking.openURL(mapUrl).catch((error) => {
                 console.error(TAG, 'Failed to open map link:', error);
-                Alert.alert('Error', 'Failed to open Google Maps');
+                if (provider === 'apple') {
+                    Alert.alert('Error', 'Failed to open Apple Maps');
+                } else {
+                    Alert.alert('Error', 'Failed to open Google Maps');
+                }
             });
 
         } catch (error) {
@@ -1033,20 +1053,203 @@ export default function ChatScreen() {
     // HELPER FUNCTIONS
     // ========================================
     
+    // Transit icon mapping for Lucide React Native
+    const transitIconMap: { [key: string]: React.ComponentType<any> } = {
+        'bus': BusFront,
+        'subway': TrainFrontTunnel,
+        'metro': TrainFrontTunnel,
+        'tram': TramFront,
+        'streetcar': TramFront,
+        'train': TrainFront,
+        'ferry': Ship,
+        'walk': Footprints,
+        'default': Info,
+    };
+
     /**
-     * Gets the appropriate icon for transit type
-     * @param transitType - Type of transit
-     * @returns Icon name for MaterialCommunityIcons
+     * Gets the appropriate icon component for transit types
+     * @param transitType - The type of transit (bus, subway, tram, etc.)
+     * @returns Lucide React Native icon component
      */
-    const getTransitIcon = (transitType: string) => {
+    const getTransitIcon = (transitType: string): React.ComponentType<any> => {
         const type = transitType.toLowerCase();
-        if (type.includes('bus')) return 'bus' as const;
-        if (type.includes('subway') || type.includes('metro')) return 'subway-variant' as const;
-        if (type.includes('tram') || type.includes('streetcar')) return 'tram' as const;
-        if (type.includes('train')) return 'train' as const;
-        if (type.includes('ferry')) return 'ferry' as const;
-        if (type.includes('walk')) return 'walk' as const;
-        return 'transit-connection-variant' as const; // Default transit icon
+        if (type.includes('bus')) return transitIconMap.bus;
+        if (type.includes('subway') || type.includes('metro')) return transitIconMap.subway;
+        if (type.includes('tram') || type.includes('streetcar')) return transitIconMap.tram;
+        if (type.includes('train')) return transitIconMap.train;
+        if (type.includes('ferry')) return transitIconMap.ferry;
+        if (type.includes('walk')) return transitIconMap.walk;
+        return transitIconMap.default;
+    };
+
+    // ========================================
+    // BOTTOM SHEET RENDER FUNCTIONS
+    // ========================================
+
+    /**
+     * Renders detail section for FlashList
+     * @param item - Detail section data
+     * @returns JSX element for detail section
+     */
+    const renderDetailSection = ({ item }: { item: DetailSection }) => {
+        switch (item.type) {
+            case 'info':
+                return (
+                    <View style={styles.bottomSheetInfoSection}>
+                        <View style={styles.bottomSheetRegenerateContainer}>
+                            <TouchableOpacity
+                                style={styles.bottomSheetRegenerateIcon}
+                                onPress={() => {
+                                    hideBottomSheet();
+                                    handleRegenerateLocation(bottomSheetLocation!);
+                                }}
+                            >
+                                <RotateCw size={ICON_SIZES.xl} color={COLORS.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.bottomSheetLocationName}>{item.data.name}</Text>
+                        <Text style={styles.bottomSheetLocationAddress}>{item.data.address}</Text>
+                        
+                        <View style={styles.bottomSheetMetaRow}>
+                            <View style={styles.bottomSheetMetaItem}>
+                                <Star size={ICON_SIZES.sm} color="#FFD700" />
+                                <Text style={styles.bottomSheetRatingText}>
+                                    {item.data.rating?.toFixed(1)}
+                                </Text>
+                            </View>
+                            <View style={styles.bottomSheetMetaItem}>
+                                <Tag size={ICON_SIZES.sm} color={COLORS.lightText} />
+                                <Text style={styles.bottomSheetMetaText}>
+                                    {item.data.category.charAt(0).toUpperCase() + item.data.category.slice(1)}
+                                </Text>
+                            </View>
+                            <View style={styles.bottomSheetMetaItem}>
+                                <Hourglass size={ICON_SIZES.sm} color={COLORS.lightText} />
+                                <Text style={styles.bottomSheetMetaText}>{item.data.estimatedTime}</Text>
+                            </View>
+                            <View style={styles.bottomSheetMetaItem}>
+                                <Text style={styles.bottomSheetMetaText}>{item.data.priceRange}</Text>
+                            </View>
+                        </View>
+
+                        <Text style={styles.bottomSheetDescription}>{item.data.description}</Text>
+                        
+                        <View style={styles.bottomSheetActionButtons}>
+                            {bottomSheetLocation?.website && bottomSheetLocation.website !== 'Not available' ? (
+                                <TouchableOpacity
+                                    style={styles.bottomSheetWebsiteButton}
+                                    onPress={() => handleOpenWebsite(bottomSheetLocation!)}
+                                >
+                                    <Globe size={ICON_SIZES.sm} color={COLORS.primary} />
+                                    <Text style={styles.bottomSheetWebsiteText}>Visit Website</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity
+                                    style={styles.bottomSheetWebsiteButton}
+                                    onPress={() => handleOpenWebsite(bottomSheetLocation!)}
+                                >
+                                    <Search size={ICON_SIZES.sm} color={COLORS.primary} />
+                                    <Text style={styles.bottomSheetWebsiteText}>Search on Google</Text>
+                                </TouchableOpacity>
+                            )}
+                            
+                            {item.data.phone && (
+                                <TouchableOpacity
+                                    style={styles.bottomSheetPhoneButton}
+                                    onPress={() => Linking.openURL(`tel:${item.data.phone}`)}
+                                >
+                                    <Phone size={ICON_SIZES.sm} color={COLORS.primary} />
+                                    <Text style={styles.bottomSheetPhoneText}>{item.data.phone}</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        
+                    </View>
+                );
+
+            case 'hours':
+                return (
+                    <View style={styles.bottomSheetHoursSection}>
+                        <View style={styles.bottomSheetSectionHeader}>
+                            <Clock size={20} color={COLORS.primary} />
+                            <Text style={styles.bottomSheetSectionTitle}>Hours of Operation</Text>
+                        </View>
+                        
+                        <View style={styles.bottomSheetHoursList}>
+                            {item.data.weekday_text.map((hours: string, index: number) => (
+                                <Text key={index} style={styles.bottomSheetHoursText}>
+                                    {hours}
+                                </Text>
+                            ))}
+                        </View>
+                    </View>
+                );
+
+            case 'map':
+                return (
+                    <View style={styles.bottomSheetMapSection}>
+                        <View style={styles.bottomSheetSectionHeader}>
+                            <MapPin size={ICON_SIZES.xl} color={COLORS.primary} />
+                            <Text style={styles.bottomSheetSectionTitle}>Location</Text>
+                        </View>
+                        
+                        <TouchableOpacity
+                            style={styles.bottomSheetMapContainer}
+                            onPress={() => handleGetDirections(bottomSheetLocation!)}
+                            activeOpacity={0.8}
+                        >
+                            <MapView
+                                style={styles.bottomSheetMap}
+                                initialRegion={{
+                                    latitude: 37.78825, // Default coordinates - should be replaced with actual location coords
+                                    longitude: -122.4324,
+                                    latitudeDelta: 0.005,
+                                    longitudeDelta: 0.005,
+                                }}
+                                scrollEnabled={false}
+                                zoomEnabled={false}
+                                rotateEnabled={false}
+                                pitchEnabled={false}
+                            >
+                                <Marker
+                                    coordinate={{
+                                        latitude: 37.78825, // Default coordinates - should be replaced with actual location coords
+                                        longitude: -122.4324,
+                                    }}
+                                />
+                            </MapView>
+                            <View style={styles.bottomSheetMapOverlay}>
+                                <TouchableOpacity onPress={() => handleGetDirections(bottomSheetLocation!)}>
+                                    <ExternalLink size={ICON_SIZES.xl} color={COLORS.white} />
+                                </TouchableOpacity>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                );
+
+            default:
+                return null;
+        }
+    };
+
+    /**
+     * Renders bottom sheet content based on current state
+     * @returns JSX element for bottom sheet content
+     */
+    const renderBottomSheetContent = () => {
+        if (!bottomSheetLocation) return null;
+
+        // Show full details
+        const sections = getDetailSections(bottomSheetLocation);
+        return (
+            <BottomSheetView style={styles.bottomSheetContent}>
+                <FlashList
+                    data={sections}
+                    renderItem={renderDetailSection}
+                    showsVerticalScrollIndicator={false}
+                />
+            </BottomSheetView>
+        );
     };
 
     // ========================================
@@ -1123,7 +1326,7 @@ export default function ChatScreen() {
                                             {/* Location content */}
                                             <TouchableOpacity
                                                 style={styles.locationItemInChat}
-                                                onPress={() => showLocationActionSheet(location)}
+                                                onPress={() => showLocationBottomSheet(location)}
                                                 accessibilityLabel={`Location: ${location.name} at ${location.time}`}
                                                 accessibilityRole="button"
                                             >
@@ -1138,10 +1341,7 @@ export default function ChatScreen() {
                                                             </Text>
                                                             {location.rating && (
                                                                 <View style={styles.locationItemRating}>
-                                                                    <MaterialCommunityIcons 
-                                                                        name="star" 
-                                                                        size={12} 
-                                                                        color="#FFD700" 
+                                                                    <Star size={ICON_SIZES.xs} color="#FFD700" 
                                                                     />
                                                                     <Text style={styles.locationItemRatingText}>
                                                                         {location.rating.toFixed(1)}
@@ -1161,8 +1361,7 @@ export default function ChatScreen() {
                                                     
                                                     <View style={styles.locationItemFooter}>
                                                         <View style={styles.locationItemTime}>
-                                                            <MaterialCommunityIcons 
-                                                                name="clock-outline" 
+                                                            <Hourglass 
                                                                 size={12} 
                                                                 color={COLORS.lightText} 
                                                             />
@@ -1174,19 +1373,6 @@ export default function ChatScreen() {
                                                             <Text style={styles.locationItemPrice}>
                                                                 {location.priceRange}
                                                             </Text>
-                                                            {location.opening_hours?.open_now !== undefined && (
-                                                                <View style={[
-                                                                    styles.locationItemStatus,
-                                                                    location.opening_hours.open_now ? styles.locationItemStatusOpen : styles.locationItemStatusClosed
-                                                                ]}>
-                                                                    <Text style={[
-                                                                        styles.locationItemStatusText,
-                                                                        location.opening_hours.open_now ? styles.locationItemStatusTextOpen : styles.locationItemStatusTextClosed
-                                                                    ]}>
-                                                                        {location.opening_hours.open_now ? 'Open' : 'Closed'}
-                                                                    </Text>
-                                                                </View>
-                                                            )}
                                                         </View>
                                                     </View>
                                                 </View>
@@ -1197,11 +1383,10 @@ export default function ChatScreen() {
                                         {location.transitToNext && (
                                             <View key={`transit-${locationIndex}`} style={styles.transitInfoWrapper}>
                                                 <View style={styles.transitIndicator}>
-                                                    <MaterialCommunityIcons
-                                                        name={getTransitIcon(location.transitToNext.type)}
-                                                        size={16}
-                                                        color={COLORS.primary}
-                                                    />
+                                                    {(() => {
+                                                        const TransitIcon = getTransitIcon(location.transitToNext.type);
+                                                        return <TransitIcon size={16} color={COLORS.primary} />;
+                                                    })()}
                                                 </View>
                                                 <View style={styles.transitDetails}>
                                                     <Text style={styles.transitText}>
@@ -1219,11 +1404,7 @@ export default function ChatScreen() {
                     {!isUser && message.practicalTips && (
                         <View style={styles.practicalTipsContainer}>
                             <View style={styles.practicalTipsHeader}>
-                                <MaterialCommunityIcons 
-                                    name="lightbulb-outline" 
-                                    size={16} 
-                                    color={COLORS.primary} 
-                                />
+                                <Lightbulb size={16} color={COLORS.primary} />
                                 <Text style={styles.practicalTipsTitle}>Trip Insights</Text>
                             </View>
                             <Text style={styles.practicalTipsText}>{message.practicalTips}</Text>
@@ -1281,7 +1462,7 @@ export default function ChatScreen() {
                     accessibilityLabel="Go back"
                     accessibilityRole="button"
                 >
-                    <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
+                    <ChevronLeft size={24} color={COLORS.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle} numberOfLines={1}>
                     {title}
@@ -1353,62 +1534,30 @@ export default function ChatScreen() {
                             <ActivityIndicator size="small" color={COLORS.white} />
                         ) : (
                             <>
-                                <MaterialCommunityIcons 
-                                    name="map" 
-                                    size={20} 
-                                    color={COLORS.white} 
-                                />
+                                <Route size={20} color={COLORS.white} />
                                 <Text style={styles.mapItButtonFullWidthText}>
                                     MapIT
                                 </Text>
+                                <MapPinned size={20} color={COLORS.white} />
                             </>
                         )}
                     </TouchableOpacity>
                 </Animated.View>
             )}
 
-            {/* Location ActionSheet */}
-            <ActionSheet id="locationActionSheet" gestureEnabled={true}>
-                <View style={styles.actionSheetContainer}>
-                    {actionSheetLocation && (
-                        <>
-                            <View style={styles.actionSheetHeader}>
-                                <View style={styles.actionSheetLocationInfo}>
-                                    <Text style={styles.actionSheetTitle}>{actionSheetLocation.name}</Text>
-                                    <Text style={styles.actionSheetAddress}>{actionSheetLocation.address}</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.regenIconButton}
-                                    onPress={() => {
-                                        hideActionSheet();
-                                        handleRegenerateLocation(actionSheetLocation);
-                                    }}
-                                    accessibilityLabel="Re-generate plan"
-                                    accessibilityRole="button"
-                                >
-                                    <MaterialCommunityIcons 
-                                        name="refresh" 
-                                        size={24} 
-                                        color={COLORS.primary} 
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                            {actionSheetLocation.imageURL && (
-                                <Image
-                                    source={{ uri: actionSheetLocation.imageURL }}
-                                    style={styles.actionSheetPhoto}
-                                />
-                            )}
-                            {!actionSheetLocation.imageURL && actionSheetLocation.photos && actionSheetLocation.photos.length > 0 && (
-                                <Image
-                                    source={{ uri: actionSheetLocation.photos[0].url }}
-                                    style={styles.actionSheetPhoto}
-                                />
-                            )}
-                        </>
-                    )}
-                </View>
-            </ActionSheet>
+            {/* Location Bottom Sheet */}
+            <BottomSheet
+                ref={bottomSheetRef}
+                index={-1}
+                snapPoints={snapPoints}
+                enablePanDownToClose={true}
+                backdropComponent={renderBackdrop}
+                onClose={() => setBottomSheetLocation(null)}
+                handleIndicatorStyle={styles.bottomSheetIndicator}
+                backgroundStyle={styles.bottomSheetBackground}
+            >
+                {renderBottomSheetContent()}
+            </BottomSheet>
         </View>
     );
 }
@@ -1649,32 +1798,6 @@ const styles = StyleSheet.create({
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
         color: COLORS.primary,
     },
-    locationItemStatus: {
-        paddingHorizontal: SPACING.xs / 2,
-        paddingVertical: SPACING.xs / 4,
-        borderRadius: SPACING.sm,
-        marginLeft: SPACING.xs,
-    },
-    locationItemStatusOpen: {
-        backgroundColor: COLORS.accent,
-        borderWidth: 1,
-        borderColor: COLORS.primary,
-    },
-    locationItemStatusClosed: {
-        backgroundColor: COLORS.errorBackground,
-        borderWidth: 1,
-        borderColor: COLORS.error,
-    },
-    locationItemStatusText: {
-        fontSize: TYPOGRAPHY.fontSize.xs,
-        fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    },
-    locationItemStatusTextOpen: {
-        color: COLORS.primary,
-    },
-    locationItemStatusTextClosed: {
-        color: COLORS.error,
-    },
 
     // MapIT Button (Full-width)
     mapItContainer: {
@@ -1704,49 +1827,202 @@ const styles = StyleSheet.create({
         color: COLORS.white,
         fontSize: TYPOGRAPHY.fontSize.lg,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
-        marginLeft: SPACING.sm,
-    },
-
-    actionSheetContainer: {
-        backgroundColor: COLORS.white,
-        paddingTop: SPACING.md,
-        paddingHorizontal: SPACING.xl,
-        paddingBottom: SPACING.xxl,
-        borderTopLeftRadius: RADIUS.xl,
-        borderTopRightRadius: RADIUS.xl,
-    },
-    actionSheetHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: SPACING.md,
-    },
-    actionSheetLocationInfo: {
-        flex: 1,
+        marginLeft: SPACING.md,
         marginRight: SPACING.md,
     },
-    actionSheetTitle: {
+
+    // Bottom Sheet Styles
+    bottomSheetBackground: {
+        backgroundColor: COLORS.white,
+        borderTopLeftRadius: RADIUS.xl,
+        borderTopRightRadius: RADIUS.xl,
+        ...SHADOWS.card,
+    },
+    bottomSheetIndicator: {
+        backgroundColor: COLORS.border,
+        width: 40,
+        height: 4,
+    },
+    bottomSheetContent: {
+        flex: 1,
+        paddingHorizontal: SPACING.xl,
+    },
+    bottomSheetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.lg,
+        paddingBottom: SPACING.md,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    bottomSheetTitle: {
+        flex: 1,
         fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.bold,
+        color: COLORS.text,
+        marginRight: SPACING.md,
+    },
+
+    // Info Section
+    bottomSheetInfoSection: {
+        paddingBottom: SPACING.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        marginBottom: SPACING.lg,
+        position: 'relative',
+    },
+    bottomSheetLocationName: {
+        fontSize: TYPOGRAPHY.fontSize.xl,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
         color: COLORS.text,
         marginBottom: SPACING.xs,
     },
-    actionSheetAddress: {
+    bottomSheetLocationAddress: {
         fontSize: TYPOGRAPHY.fontSize.sm,
         color: COLORS.lightText,
+        marginBottom: SPACING.md,
         lineHeight: TYPOGRAPHY.lineHeight.relaxed,
     },
-    regenIconButton: {
-        padding: SPACING.xs,
+    bottomSheetRatingText: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
+        color: COLORS.text,
+        marginLeft: SPACING.xs,
     },
-    actionSheetPhoto: {
-        width: '100%',
-        height: 150,
-        borderRadius: RADIUS.md,
+    bottomSheetDescription: {
+        fontSize: TYPOGRAPHY.fontSize.base,
+        color: COLORS.text,
+        lineHeight: TYPOGRAPHY.lineHeight.relaxed,
         marginBottom: SPACING.md,
+    },
+    bottomSheetMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'flex-start',
+        marginBottom: SPACING.md,
+        gap: SPACING.md,
+    },
+    bottomSheetMetaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    bottomSheetMetaText: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.text,
+        marginLeft: SPACING.xs,
+    },
+    bottomSheetPhoneButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.md,
+        backgroundColor: COLORS.accent,
+        borderRadius: RADIUS.md,
+        alignSelf: 'flex-start',
+    },
+    bottomSheetPhoneText: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.primary,
+        marginLeft: SPACING.xs,
+        fontWeight: TYPOGRAPHY.fontWeight.medium,
+    },
+
+    // Action Buttons
+    bottomSheetActionButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        alignItems: 'flex-start',
+    },
+    bottomSheetWebsiteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.md,
+        backgroundColor: COLORS.accent,
+        borderRadius: RADIUS.md,
+        marginRight: SPACING.sm,
+    },
+    bottomSheetWebsiteText: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.primary,
+        marginLeft: SPACING.xs,
+        fontWeight: TYPOGRAPHY.fontWeight.medium,
+    },
+
+    // Regenerate Icon
+    bottomSheetRegenerateContainer: {
+        position: 'absolute',
+        top: SPACING.md,
+        right: SPACING.md,
+        zIndex: 1,
+    },
+    bottomSheetRegenerateIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: RADIUS.md,
+        backgroundColor: COLORS.accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...SHADOWS.button,
+    },
+
+    // Section Headers
+    bottomSheetSectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: SPACING.md,
+    },
+    bottomSheetSectionTitle: {
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
+        color: COLORS.text,
+        marginLeft: SPACING.sm,
+    },
+
+    // Hours Section
+    bottomSheetHoursSection: {
+        paddingBottom: SPACING.lg,
+        marginBottom: SPACING.lg,
+    },
+
+    bottomSheetHoursList: {
+        gap: SPACING.xs,
+    },
+    bottomSheetHoursText: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.text,
+        lineHeight: TYPOGRAPHY.lineHeight.relaxed,
+    },
+
+    // Map Section
+    bottomSheetMapSection: {
+        paddingBottom: SPACING.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        marginBottom: SPACING.lg,
+    },
+    bottomSheetMapContainer: {
+        position: 'relative',
+        height: 200,
+        borderRadius: RADIUS.md,
+        overflow: 'hidden',
         ...SHADOWS.card,
     },
-    
+    bottomSheetMap: {
+        flex: 1,
+    },
+    bottomSheetMapOverlay: {
+        position: 'absolute',
+        top: SPACING.sm,
+        right: SPACING.sm,
+        backgroundColor: COLORS.primary,
+        borderRadius: RADIUS.md,
+        padding: SPACING.sm,
+        ...SHADOWS.button,
+    },
+
     // Practical Tips styles
     practicalTipsContainer: {
         marginTop: SPACING.md,
