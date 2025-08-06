@@ -9,15 +9,16 @@
 // ========================================
 // IMPORTS
 // ========================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Image } from 'expo-image';
-import { StyleSheet, TouchableOpacity, View, Linking, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { Platform, StyleSheet, TouchableOpacity, View, Linking, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { BlurView } from 'expo-blur';
 import AppearanceActionSheet, { showAppearanceSheet } from '@/components/AppearanceActionSheet';
+import MapsProviderActionSheet, { MapsProviderActionSheetRef } from '@/components/MapsProviderActionSheet';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES, SHADOWS, PROFILE_LAYOUT } from '@/constants/DesignTokens';
@@ -424,6 +425,9 @@ export default function ProfileScreen() {
         imageUri: profileImageUri ? `${profileImageUri.substring(0, 50)}...` : 'default'
     });
 
+    // Add ref for MapsProviderActionSheet
+    const mapsProviderSheetRef = useRef<MapsProviderActionSheetRef>(null);
+
     return (
         <ThemedView style={styles.container}>
             <ScrollView
@@ -530,6 +534,20 @@ export default function ProfileScreen() {
                         <MaterialCommunityIcons name="chevron-down" size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
 
+                    {/* Maps Provider (iOS only) */}
+                    {Platform.OS === 'ios' ? (
+                        <TouchableOpacity 
+                            style={styles.settingItem}
+                            onPress={() => mapsProviderSheetRef.current?.show()}
+                            accessibilityLabel="Maps Provider settings"
+                            accessibilityRole="button"
+                        >
+                            <MaterialCommunityIcons name="map-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                            <ThemedText style={styles.settingText}>Maps Provider</ThemedText>
+                            <MaterialCommunityIcons name="chevron-down" size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        </TouchableOpacity>
+                    ) : null}
+
                     <TouchableOpacity 
                         style={styles.settingItem}
                         onPress={() => handleSettingPress('Rate PlanIT')}
@@ -562,17 +580,6 @@ export default function ProfileScreen() {
                         <ThemedText style={styles.settingText}>Support on GitHub</ThemedText>
                         <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
                     </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        style={styles.settingItem}
-                        onPress={() => handleSettingPress('Legal & About')}
-                        accessibilityLabel="Legal information and about"
-                        accessibilityRole="button"
-                    >
-                        <MaterialCommunityIcons name="information-outline" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                        <ThemedText style={styles.settingText}>Legal & About</ThemedText>
-                        <MaterialCommunityIcons name="open-in-new" size={ICON_SIZES.xl} color={COLORS.lightText} />
-                    </TouchableOpacity>
                 </ThemedView>
 
                 {/* Copyright */}
@@ -587,6 +594,8 @@ export default function ProfileScreen() {
                     console.log(TAG, 'Theme changed to:', theme);
                 }}
             />
+            {/* Maps Provider Action Sheet (iOS only) */}
+            <MapsProviderActionSheet ref={mapsProviderSheetRef} />
         </ThemedView>
     );
 }
