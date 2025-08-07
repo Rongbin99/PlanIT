@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Text, TouchableOpacity, Platform, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, Platform, StyleSheet, View } from 'react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { FlashList } from '@shopify/flash-list';
-import { Circle, CircleCheckBig } from 'lucide-react-native';
+import { CircleCheckBig } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
 import { getMapProvider, setMapProvider, MAP_PROVIDER_OPTIONS, MapProviderType } from '@/constants/MapProvider';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export interface MapsProviderActionSheetRef {
   show: () => void;
@@ -80,25 +81,31 @@ const MapsProviderActionSheet = forwardRef<MapsProviderActionSheetRef, MapsProvi
         accessibilityRole="button"
         accessibilityState={{ selected: selected === item.value }}
       >
-        {selected === item.value ? (
+        <View style={styles.providerOptionContent}>
+          <View style={styles.providerOptionHeader}>
+            <MaterialCommunityIcons
+              name={item.value === 'apple' ? ('apple' as any) : ('google-maps' as any)}
+              size={ICON_SIZES.xl}
+              color={selected === item.value ? COLORS.primary : COLORS.lightText}
+              style={styles.providerIcon}
+            />
+            <View style={styles.providerTextContainer}>
+              <Text style={[
+                styles.highlightButtonText,
+                selected === item.value && styles.highlightButtonTextSelected,
+              ]}>
+                {item.label}
+              </Text>
+            </View>
+          </View>
+        </View>
+        {selected === item.value && (
           <CircleCheckBig
-            size={ICON_SIZES.lg}
+            size={ICON_SIZES.xl}
             color={COLORS.primary}
-            style={{ marginRight: 8 }}
-          />
-        ) : (
-          <Circle
-            size={ICON_SIZES.lg}
-            color={COLORS.lightText}
-            style={{ marginRight: 8 }}
+            style={{ marginRight: 12 }}
           />
         )}
-        <Text style={[
-          styles.highlightButtonText,
-          selected === item.value && styles.highlightButtonTextSelected,
-        ]}>
-          {item.label}
-        </Text>
       </TouchableOpacity>
     );
 
@@ -154,7 +161,8 @@ const styles = StyleSheet.create({
   highlightButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    justifyContent: 'space-between',
+    height: 72,
     paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.md,
     borderWidth: 1,
@@ -174,6 +182,22 @@ const styles = StyleSheet.create({
   },
   highlightButtonTextSelected: {
     color: COLORS.primary,
+  },
+  providerOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  providerOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  providerIcon: {
+    marginRight: SPACING.md,
+  },
+  providerTextContainer: {
+    flex: 1,
   },
 });
 
