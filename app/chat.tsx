@@ -19,7 +19,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Star, Tag, Clock, Globe, Phone, MapPin, Route, Lightbulb, RotateCw, Search, Hourglass, ExternalLink, ChevronLeft, MapPinned, Footprints, TrainFrontTunnel, BusFront, TramFront, TrainFront, Ship, Info } from 'lucide-react-native';
+import { Star, Tag, Clock, Globe, Phone, MapPin, Route, Lightbulb, RotateCw, Search, Hourglass, ExternalLink, ChevronLeft, MapPinned, Footprints, TrainFrontTunnel, BusFront, TramFront, TrainFront, Ship, Info, X } from 'lucide-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { FlashList } from '@shopify/flash-list';
 import MapView, { Marker } from 'react-native-maps';
@@ -44,7 +44,10 @@ interface Location {
     estimatedTime: string;
     time: string;
     priceRange: 'Free' | '$' | '$$' | '$$$' | '$$$+';
-    imageURL?: string;
+    coordinates?: {
+        latitude: number;
+        longitude: number;
+    };
     photos?: Array<{
         url: string;
         width: number;
@@ -138,6 +141,10 @@ interface DetailSection {
 // ========================================
 
 const TAG = "[ChatScreen]";
+const FALLBACK_COORDINATES = {
+    latitude: 43.6532,
+    longitude: -79.3832,
+}
 
 /**
  * Chat-specific constants not in design tokens
@@ -208,6 +215,10 @@ export default function ChatScreen() {
     // Bottom sheet state
     const [bottomSheetLocation, setBottomSheetLocation] = useState<Location | null>(null);
     
+    // Transit details modal state
+    const [transitDetailsLocation, setTransitDetailsLocation] = useState<Location | null>(null);
+    const [showTransitDetails, setShowTransitDetails] = useState(false);
+    
     // Animation references
     const scrollViewRef = useRef<ScrollView>(null);
     const dotAnimation = useRef(new Animated.Value(0)).current;
@@ -217,6 +228,10 @@ export default function ChatScreen() {
     // Bottom sheet references
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ['85%'], []);
+    
+    // Transit details bottom sheet references
+    const transitBottomSheetRef = useRef<BottomSheet>(null);
+    const transitSnapPoints = useMemo(() => ['30%'], []);
 
     // Parsed search data from navigation params
     const searchData: SearchData | null = params.searchData 
@@ -388,7 +403,7 @@ export default function ChatScreen() {
             
             // Update trip data for history integration
             if (aiResponse.city) {
-                updateTripDataForHistory(backendChatId, aiResponse.city, aiResponse.locations || []);
+                await updateTripDataForHistory(backendChatId, aiResponse.city, aiResponse.locations || []);
             }
             
             console.log(TAG, 'Chat initialization completed successfully with backend UUID:', {
@@ -661,7 +676,7 @@ export default function ChatScreen() {
             message: aiMessage, 
             chatId: result.chatId, 
             title: result.title, 
-            location: result.location 
+            location: result.city 
         };
     };
 
@@ -728,6 +743,27 @@ export default function ChatScreen() {
         console.log(TAG, 'Hiding Location Bottom Sheet');
         bottomSheetRef.current?.close();
         setBottomSheetLocation(null);
+    };
+
+    /**
+     * Shows transit details modal for a specific location
+     * @param location - Location with transit information
+     */
+    const showTransitDetailsModal = (location: Location): void => {
+        console.log(TAG, 'Showing transit details for:', location.name);
+        setTransitDetailsLocation(location);
+        setShowTransitDetails(true);
+        transitBottomSheetRef.current?.snapToIndex(0);
+    };
+
+    /**
+     * Hides transit details modal
+     */
+    const hideTransitDetailsModal = (): void => {
+        console.log(TAG, 'Hiding transit details modal');
+        setShowTransitDetails(false);
+        setTransitDetailsLocation(null);
+        transitBottomSheetRef.current?.close();
     };
 
     /**
@@ -811,18 +847,115 @@ export default function ChatScreen() {
                 { 
                     text: 'Confirm', 
                     onPress: () => {
-                        // Navigate back to search with pre-filled location
-                        router.push({
-                        pathname: '/(tabs)',
-                        params: {
-                            prefillLocation: location.address,
-                            prefillQuery: `More places like ${location.name}`
-                            }
-                        });
+                        console.log(TAG, 'User confirmed regeneration, calling API');
+                        regeneratePlanWithoutLocation(location);
                     }
                 }
             ]
         );
+    };
+
+    /**
+     * Sends regeneration request to backend API
+     * @param locationToExclude - Location to exclude from new plan
+     */
+    const regeneratePlanWithoutLocation = async (locationToExclude: Location): Promise<void> => {
+        if (!searchData || !chatData) {
+            console.error(TAG, 'Missing search data or chat data for regeneration');
+            Alert.alert('Error', 'Unable to regenerate plan. Please try again.');
+            return;
+        }
+
+        console.log(TAG, 'Starting regeneration API request');
+        setIsLoading(true);
+
+        try {
+            // Create new search data with exclusion context
+            const regenerationSearchData = {
+                ...searchData,
+                searchQuery: `More places like ${locationToExclude.name} (excluding ${locationToExclude.name})`,
+                regenerationContext: {
+                    excludedLocation: locationToExclude.name,
+                    originalChatId: chatData.id,
+                    originalQuery: searchData.searchQuery
+                }
+            };
+
+            // Create user message for regeneration
+            const regenerationUserMessage = {
+                id: `user_regenerate_${Date.now()}`,
+                type: 'user' as const,
+                content: `Please generate a new plan without ${locationToExclude.name}. I'd like similar alternatives.`,
+                timestamp: new Date().toISOString(),
+            };
+
+            console.log(TAG, 'Sending regeneration request to backend');
+            const { message: aiResponse, chatId: backendChatId, title: backendTitle, location: backendLocation } = await fetchAIResponse(regenerationSearchData, regenerationUserMessage);
+            
+            // Update user message ID to reference backend chat ID
+            const updatedUserMessage = {
+                ...regenerationUserMessage,
+                id: `user_${backendChatId}_0`
+            };
+            
+            // Create new chat data with backend chat ID
+            const newChatData = createChatDataWithBackendId(regenerationSearchData, updatedUserMessage, aiResponse, backendChatId, backendTitle, backendLocation);
+            
+            // Save to local storage
+            const storedChatData: StoredChatData = {
+                id: newChatData.id,
+                title: newChatData.title,
+                location: newChatData.location,
+                searchData: newChatData.searchData,
+                messages: newChatData.messages,
+                createdAt: newChatData.createdAt,
+                updatedAt: newChatData.updatedAt,
+            };
+            await saveToStorage(storedChatData);
+            
+            // Update state with new chat data
+            setMessages([updatedUserMessage, aiResponse]);
+            setChatData(newChatData);
+            
+            // Set locations from AI response
+            if (aiResponse.locations && aiResponse.locations.length > 0) {
+                setLocations(aiResponse.locations);
+                console.log(TAG, 'Set new locations from regeneration:', aiResponse.locations.length);
+            }
+            
+            // Update trip data for history integration
+            if (aiResponse.city) {
+                await updateTripDataForHistory(backendChatId, aiResponse.city, aiResponse.locations || []);
+            }
+            
+            console.log(TAG, 'Regeneration completed successfully:', {
+                newChatId: backendChatId,
+                title: newChatData.title,
+                locationCount: aiResponse.locations?.length || 0
+            });
+            
+            setIsLoading(false);
+            
+            // Auto-scroll to bottom after content loads
+            setTimeout(() => {
+                scrollToBottom();
+            }, ANIMATION_CONFIG.scrollDelay);
+
+        } catch (error) {
+            console.error(TAG, 'Regeneration failed:', error);
+            setIsLoading(false);
+            Alert.alert(
+                'Regeneration Error',
+                'Failed to generate new plan. Please try again.',
+                [
+                    { text: 'OK' },
+                    {
+                        text: 'Retry',
+                        onPress: () => regeneratePlanWithoutLocation(locationToExclude)
+                    }
+                ]
+            );
+        }
     };
 
     /**
@@ -898,7 +1031,8 @@ export default function ChatScreen() {
                 headers,
                 body: JSON.stringify({
                     locations: locations,
-                    travelMode: 'driving'
+                    travelMode: 'driving',
+                    mapProvider: provider
                 }),
             });
 
@@ -909,21 +1043,9 @@ export default function ChatScreen() {
             const result = await response.json();
             console.log(TAG, 'Generated map link:', result.mapUrl);
 
-            let mapUrl = result.mapUrl;
-            if (provider === 'apple') {
-                // Try to convert Google Maps URL to Apple Maps format (best effort)
-                // We'll just use the first location as destination for Apple Maps
-                const dest = encodeURIComponent(locations[locations.length - 1].address);
-                mapUrl = `http://maps.apple.com/?daddr=${dest}`;
-            }
-
-            Linking.openURL(mapUrl).catch((error) => {
+            Linking.openURL(result.mapUrl).catch((error) => {
                 console.error(TAG, 'Failed to open map link:', error);
-                if (provider === 'apple') {
-                    Alert.alert('Error', 'Failed to open Apple Maps');
-                } else {
-                    Alert.alert('Error', 'Failed to open Google Maps');
-                }
+                Alert.alert('Error', `Failed to open ${provider === 'apple' ? 'Apple Maps' : 'Google Maps'}`);
             });
 
         } catch (error) {
@@ -944,7 +1066,7 @@ export default function ChatScreen() {
      * @param city - City from AI response
      * @param locations - Array of locations
      */
-    const updateTripDataForHistory = (chatId: string, city: string, locations: Location[]): void => {
+    const updateTripDataForHistory = async (chatId: string, city: string, locations: Location[]): Promise<void> => {
         console.log(TAG, 'Updating trip data for history integration:', {
             chatId,
             city,
@@ -959,7 +1081,7 @@ export default function ChatScreen() {
         if (chatData) {
             const updatedChatData = {
                 ...chatData,
-                location: city, // Use AI-provided city instead of extracted location
+                location: city,
                 searchData: {
                     ...chatData.searchData,
                     aiGeneratedCity: city,
@@ -967,7 +1089,24 @@ export default function ChatScreen() {
                 }
             };
             setChatData(updatedChatData);
-            console.log(TAG, 'Updated chat data with AI city and locations for history');
+            
+            // Save the updated chat data to local storage with the AI city override
+            const storedChatData: StoredChatData = {
+                id: updatedChatData.id,
+                title: updatedChatData.title,
+                location: city,
+                searchData: updatedChatData.searchData,
+                messages: updatedChatData.messages,
+                createdAt: updatedChatData.createdAt,
+                updatedAt: updatedChatData.updatedAt,
+            };
+            await saveToStorage(storedChatData);
+            
+            console.log(TAG, 'Updated chat data with AI city and saved to local storage:', {
+                originalLocation: chatData.location,
+                newLocation: city,
+                chatId: updatedChatData.id
+            });
         }
     };
 
@@ -1201,8 +1340,8 @@ export default function ChatScreen() {
                             <MapView
                                 style={styles.bottomSheetMap}
                                 initialRegion={{
-                                    latitude: 37.78825, // Default coordinates - should be replaced with actual location coords
-                                    longitude: -122.4324,
+                                    latitude: bottomSheetLocation?.coordinates?.latitude || FALLBACK_COORDINATES.latitude,
+                                    longitude: bottomSheetLocation?.coordinates?.longitude || FALLBACK_COORDINATES.longitude,
                                     latitudeDelta: 0.005,
                                     longitudeDelta: 0.005,
                                 }}
@@ -1213,8 +1352,8 @@ export default function ChatScreen() {
                             >
                                 <Marker
                                     coordinate={{
-                                        latitude: 37.78825, // Default coordinates - should be replaced with actual location coords
-                                        longitude: -122.4324,
+                                        latitude: bottomSheetLocation?.coordinates?.latitude || FALLBACK_COORDINATES.latitude,
+                                        longitude: bottomSheetLocation?.coordinates?.longitude || FALLBACK_COORDINATES.longitude,
                                     }}
                                 />
                             </MapView>
@@ -1381,7 +1520,12 @@ export default function ChatScreen() {
                                         
                                         {/* Transit Information (between locations) */}
                                         {location.transitToNext && (
-                                            <View key={`transit-${locationIndex}`} style={styles.transitInfoWrapper}>
+                                            <TouchableOpacity
+                                                key={`transit-${locationIndex}`}
+                                                style={styles.transitInfoWrapper}
+                                                onPress={() => showTransitDetailsModal(location)}
+                                                activeOpacity={0.7}
+                                            >
                                                 <View style={styles.transitIndicator}>
                                                     {(() => {
                                                         const TransitIcon = getTransitIcon(location.transitToNext.type);
@@ -1393,7 +1537,7 @@ export default function ChatScreen() {
                                                         {location.transitToNext.type} ({location.transitToNext.duration})
                                                     </Text>
                                                 </View>
-                                            </View>
+                                            </TouchableOpacity>
                                         )}
                                     </React.Fragment>
                                 ))}
@@ -1469,6 +1613,67 @@ export default function ChatScreen() {
                 </Text>
                 <View style={styles.headerSpacer} />
             </View>
+        );
+    };
+
+    /**
+     * Renders transit details using FlashList
+     * @returns JSX element for transit details FlashList
+     */
+    const renderTransitDetailsFlashList = () => {
+        if (!transitDetailsLocation || !transitDetailsLocation.transitToNext) {
+            return null;
+        }
+
+        const transitData = [
+            {
+                id: 'transit-info',
+                type: 'transit',
+                data: transitDetailsLocation.transitToNext
+            }
+        ];
+
+        const renderTransitItem = ({ item }: { item: any }) => {
+            switch (item.type) {
+                case 'transit':
+                    return (
+                        <View style={styles.transitDetailsContainer}>
+                            <View style={styles.transitTypeContainer}>
+                                {(() => {
+                                    const TransitIcon = getTransitIcon(item.data.type);
+                                    return <TransitIcon size={24} color={COLORS.primary} />;
+                                })()}
+                                <Text style={styles.transitTypeText}>
+                                    {item.data.type}
+                                </Text>
+                                <Text style={styles.transitDurationText}>
+                                    {item.data.duration}
+                                </Text>
+                            </View>
+                            
+                            <View style={styles.transitInstructionsContainer}>
+                                <Text style={styles.transitInstructionsTitle}>
+                                    Instructions
+                                </Text>
+                                <Text style={styles.transitInstructionsText}>
+                                    {item.data.details}
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                
+                default:
+                    return null;
+            }
+        };
+
+        return (
+            <FlashList
+                data={transitData}
+                renderItem={renderTransitItem}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.transitFlashListContent}
+            />
         );
     };
 
@@ -1557,6 +1762,36 @@ export default function ChatScreen() {
                 backgroundStyle={styles.bottomSheetBackground}
             >
                 {renderBottomSheetContent()}
+            </BottomSheet>
+
+            {/* Transit Details Bottom Sheet */}
+            <BottomSheet
+                ref={transitBottomSheetRef}
+                index={showTransitDetails && transitDetailsLocation ? 0 : -1}
+                snapPoints={transitSnapPoints}
+                enablePanDownToClose={true}
+                backdropComponent={renderBackdrop}
+                onClose={() => {
+                    setShowTransitDetails(false);
+                    setTransitDetailsLocation(null);
+                }}
+                handleIndicatorStyle={styles.bottomSheetIndicator}
+                backgroundStyle={styles.bottomSheetBackground}
+            >
+                <BottomSheetView style={styles.transitBottomSheetContent}>
+                    <View style={styles.transitBottomSheetHeader}>
+                        <Text style={styles.transitBottomSheetTitle}>
+                            Transit Details
+                        </Text>
+                        <TouchableOpacity
+                            onPress={hideTransitDetailsModal}
+                            style={styles.transitBottomSheetCloseButton}
+                        >
+                            <X size={24} color={COLORS.text} />
+                        </TouchableOpacity>
+                    </View>
+                    {renderTransitDetailsFlashList()}
+                </BottomSheetView>
             </BottomSheet>
         </View>
     );
@@ -2074,5 +2309,84 @@ const styles = StyleSheet.create({
         fontSize: TYPOGRAPHY.fontSize.xs,
         color: COLORS.lightText,
         fontStyle: 'italic',
+    },
+
+    // Transit Bottom Sheet Styles
+    transitLocationInfo: {
+        marginBottom: SPACING.md,
+    },
+    transitLocationName: {
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
+        color: COLORS.text,
+        marginBottom: SPACING.xs / 2,
+    },
+    transitLocationAddress: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.lightText,
+        marginBottom: SPACING.sm,
+    },
+    transitDetailsContainer: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: RADIUS.md,
+        padding: SPACING.md,
+        borderLeftWidth: 3,
+        borderLeftColor: COLORS.primary,
+    },
+    transitTypeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: SPACING.sm,
+    },
+    transitTypeText: {
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
+        color: COLORS.text,
+        marginLeft: SPACING.sm,
+    },
+    transitDurationText: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.lightText,
+        marginLeft: SPACING.sm,
+    },
+    transitInstructionsContainer: {
+        marginTop: SPACING.sm,
+    },
+    transitInstructionsTitle: {
+        fontSize: TYPOGRAPHY.fontSize.base,
+        fontWeight: TYPOGRAPHY.fontWeight.semibold,
+        color: COLORS.text,
+        marginBottom: SPACING.xs / 2,
+    },
+    transitInstructionsText: {
+        fontSize: TYPOGRAPHY.fontSize.sm,
+        color: COLORS.text,
+        lineHeight: TYPOGRAPHY.lineHeight.relaxed,
+    },
+    transitFlashListContent: {
+        paddingBottom: SPACING.md,
+    },
+    transitBottomSheetContent: {
+        flex: 1,
+        paddingHorizontal: SPACING.xl,
+    },
+    transitBottomSheetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.lg,
+        paddingBottom: SPACING.md,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    transitBottomSheetTitle: {
+        flex: 1,
+        fontSize: TYPOGRAPHY.fontSize.lg,
+        fontWeight: TYPOGRAPHY.fontWeight.bold,
+        color: COLORS.text,
+        marginRight: SPACING.md,
+    },
+    transitBottomSheetCloseButton: {
+        padding: SPACING.xs,
     },
 }); 
