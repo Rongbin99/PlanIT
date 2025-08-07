@@ -467,15 +467,6 @@ export default function HomeScreen() {
     };
 
     /**
-     * Toggles dropdown visibility
-     */
-    const toggleDropdown = (): void => {
-        const newState = !isDropdownVisible;
-        console.log(TAG, 'Toggling dropdown from', isDropdownVisible, 'to', newState);
-        setIsDropdownVisible(newState);
-    };
-
-    /**
      * Closes the dropdown and resets search focus
      */
     const closeDropdown = (): void => {
