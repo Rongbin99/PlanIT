@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChevronRight, ChevronDown, Map, Star, ExternalLink, RefreshCw, Github, UserRoundPen, SunMoon, RotateCcwKey } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
-import AppearanceActionSheet, { showAppearanceSheet } from '@/components/AppearanceActionSheet';
+import AppearanceActionSheet, { AppearanceActionSheetRef } from '@/components/AppearanceActionSheet';
 import MapsProviderActionSheet, { MapsProviderActionSheetRef } from '@/components/MapsProviderActionSheet';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -410,7 +410,7 @@ export default function ProfileScreen() {
                 router.push('/account' as any);
                 break;
             case 'Appearance':
-                showAppearanceSheet();
+                appearanceActionSheetRef.current?.show();
                 break;
             default:
                 // TODO: Implement other settings screens
@@ -424,6 +424,9 @@ export default function ProfileScreen() {
         isLoading: isLoadingImage,
         imageUri: profileImageUri ? `${profileImageUri.substring(0, 50)}...` : 'default'
     });
+
+    // Add ref for AppearanceActionSheet
+    const appearanceActionSheetRef = useRef<AppearanceActionSheetRef>(null);
 
     // Add ref for MapsProviderActionSheet
     const mapsProviderSheetRef = useRef<MapsProviderActionSheetRef>(null);
@@ -589,11 +592,7 @@ export default function ProfileScreen() {
             </ScrollView>
 
             {/* Appearance Theme Selection Action Sheet */}
-            <AppearanceActionSheet 
-                onThemeChange={(theme) => {
-                    console.log(TAG, 'Theme changed to:', theme);
-                }}
-            />
+            <AppearanceActionSheet ref={appearanceActionSheetRef} />
             {/* Maps Provider Action Sheet (iOS only) */}
             <MapsProviderActionSheet ref={mapsProviderSheetRef} />
         </ThemedView>
