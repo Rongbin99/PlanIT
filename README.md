@@ -31,7 +31,9 @@ Whether you're on vacation or just rediscovering your city, PlanIT helps you mak
 
 ## Preview
 
-WIP
+![Screenshot 1](/PlanIT/assets/images/Screenshot_1754568740.png)
+![Screenshot 2](/PlanIT/assets/images/Screenshot_1754568745.png)
+![Screenshot 3](/PlanIT/assets/images/Screenshot_1754568751.png)
 
 ## Instructions to Run
 
