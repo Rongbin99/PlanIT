@@ -30,7 +30,7 @@ Whether you're on vacation or just rediscovering your city, PlanIT helps you mak
 
 ### Demo Video
 
-https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/iOS%20Demo%20Recording.mp4
+https://github.com/user-attachments/assets/661b7c2f-276b-47be-aa07-0b15aae1537d
 
 ### Android Screenshots
 
