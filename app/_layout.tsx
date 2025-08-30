@@ -50,6 +50,7 @@ export default function RootLayout() {
                             options={{ 
                                 headerShown: Platform.OS === 'android' ? false : true,
                                 presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                headerBackTitle: 'Settings',
                                 title: 'Change Password',
                             }} 
                         />

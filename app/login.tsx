@@ -190,6 +190,10 @@ export default function LoginScreen() {
                                         autoCorrect={false}
                                         editable={!isLoading}
                                         accessibilityLabel="Email address input"
+                                        {...(Platform.OS === 'ios' && {
+                                            textContentType: 'username',
+                                            autoComplete: 'email'
+                                        })}
                                     />
                                 </View>
                             </View>
@@ -217,6 +221,10 @@ export default function LoginScreen() {
                                         autoCorrect={false}
                                         editable={!isLoading}
                                         accessibilityLabel="Password input"
+                                        {...(Platform.OS === 'ios' && {
+                                            textContentType: 'password',
+                                            autoComplete: 'password'
+                                        })}
                                     />
                                     <TouchableOpacity
                                         style={styles.passwordToggle}

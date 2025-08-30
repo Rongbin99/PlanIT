@@ -17,6 +17,7 @@ import { FlashList } from '@shopify/flash-list';
 import { CircleCheckBig, SunMedium, Moon, SunMoon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
+import { SNAP_POINTS } from '@/constants/MapProvider';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -86,7 +87,7 @@ const AppearanceActionSheet = forwardRef<AppearanceActionSheetRef, AppearanceAct
         
         const [visible, setVisible] = useState(false);
         const [selectedTheme, setSelectedTheme] = useState<ThemeOption>('system');
-        const snapPoints = ['40%'];
+        const snapPoints = SNAP_POINTS;
         const bottomSheetRef = React.useRef<BottomSheet>(null);
 
         useImperativeHandle(ref, () => ({

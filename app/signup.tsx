@@ -277,6 +277,10 @@ export default function SignupScreen() {
                                         autoCorrect={false}
                                         editable={!isLoading}
                                         accessibilityLabel="Email address input"
+                                        {...(Platform.OS === 'ios' && {
+                                            textContentType: 'emailAddress',
+                                            autoComplete: 'email'
+                                        })}
                                     />
                                 </View>
                             </View>
@@ -301,6 +305,10 @@ export default function SignupScreen() {
                                         autoCorrect={false}
                                         editable={!isLoading}
                                         accessibilityLabel="Password input"
+                                        {...(Platform.OS === 'ios' && {
+                                            textContentType: 'newPassword',
+                                            autoComplete: 'password'
+                                        })}
                                     />
                                     <TouchableOpacity
                                         style={styles.passwordToggle}
@@ -336,6 +344,10 @@ export default function SignupScreen() {
                                         autoCorrect={false}
                                         editable={!isLoading}
                                         accessibilityLabel="Confirm password input"
+                                        {...(Platform.OS === 'ios' && {
+                                            textContentType: 'newPassword',
+                                            autoComplete: 'password'
+                                        })}
                                     />
                                     <TouchableOpacity
                                         style={styles.passwordToggle}
