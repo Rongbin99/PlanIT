@@ -4,7 +4,7 @@ import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/botto
 import { FlashList } from '@shopify/flash-list';
 import { CircleCheckBig } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
-import { getMapProvider, setMapProvider, MAP_PROVIDER_OPTIONS, MapProviderType } from '@/constants/MapProvider';
+import { getMapProvider, setMapProvider, MAP_PROVIDER_OPTIONS, MapProviderType, SNAP_POINTS } from '@/constants/MapProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export interface MapsProviderActionSheetRef {
@@ -30,7 +30,7 @@ const MapsProviderActionSheet = forwardRef<MapsProviderActionSheetRef, MapsProvi
 
     const [visible, setVisible] = useState(false);
     const [selected, setSelected] = useState<MapProviderType>('apple');
-    const snapPoints = ['40%'];
+    const snapPoints = SNAP_POINTS;
     const bottomSheetRef = React.useRef<BottomSheet>(null);
 
     useImperativeHandle(ref, () => ({

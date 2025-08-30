@@ -22,3 +22,5 @@ export async function setMapProvider(provider: MapProviderType): Promise<void> {
   if (Platform.OS === 'android') return; // no-op
   await AsyncStorage.setItem(STORAGE_KEY, provider);
 }
+
+export const SNAP_POINTS = Platform.OS === 'ios' ? ['45%'] : ['40%'];

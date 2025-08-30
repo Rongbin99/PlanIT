@@ -12,7 +12,7 @@
 // IMPORTS
 // ========================================
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert, Dimensions, ActivityIndicator, FlatList, BackHandler } from 'react-native';
+import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollView, Alert, Dimensions, ActivityIndicator, FlatList, BackHandler, Platform } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ArrowLeft, LoaderCircle, LocateFixed, LocateOff, Send } from 'lucide-react-native';
@@ -83,7 +83,7 @@ const HOME_SPACING = {
 } as const;
 
 // Layout constants
-const DROPDOWN_HEIGHT_PERCENTAGE = 0.80;
+const DROPDOWN_HEIGHT_PERCENTAGE = Platform.OS === 'android' ? 0.80 : 0.70;
 const DROPDOWN_HEIGHT = SCREEN_HEIGHT * DROPDOWN_HEIGHT_PERCENTAGE;
 const BORDER_WIDTH = 3;
 
@@ -1092,7 +1092,7 @@ const styles = StyleSheet.create({
         right: 0,
         color: HOME_COLORS.placeholder,
         fontSize: TYPOGRAPHY.fontSize.sm,
-        top: -10,
+        top: Platform.OS === 'ios' ? -7.5 : -10,
     },
     
     // Buttons
@@ -1178,7 +1178,7 @@ const styles = StyleSheet.create({
     // Location Controls
     locationControls: {
         position: 'absolute',
-        bottom: 30,
+        bottom: Platform.OS === 'ios' ? 80 : 30,
         right: 20,
         alignItems: 'flex-end',
         zIndex: 5,

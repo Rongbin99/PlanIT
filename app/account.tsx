@@ -11,7 +11,7 @@
 // ========================================
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { Mail, Save, LogOut, LogIn, LoaderCircle, CircleUserRound, UserRoundPlus, IdCardLanyard } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from '@/components/ThemedView';
@@ -237,38 +237,23 @@ export default function AccountScreen() {
 
     if (isLoading) {
         return (
-            <>
-                <Stack.Screen 
-                    options={{ 
-                        title: 'Account',
-                        headerShown: true
-                    }} 
-                />
-                <ThemedView style={styles.container}>
-                    <View style={styles.loadingContainer}>
-                        <LoaderCircle 
-                            size={ICON_SIZES.xxl} 
-                            color={COLORS.primary} 
-                        />
-                        <ThemedText style={styles.loadingText}>Loading account data...</ThemedText>
-                    </View>
-                </ThemedView>
-            </>
+            <ThemedView style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <LoaderCircle 
+                        size={ICON_SIZES.xxl} 
+                        color={COLORS.primary} 
+                    />
+                    <ThemedText style={styles.loadingText}>Loading account data...</ThemedText>
+                </View>
+            </ThemedView>
         );
     }
 
     return (
-        <>
-            <Stack.Screen 
-                options={{ 
-                    title: 'Account',
-                    headerShown: true
-                }} 
-            />
-            <ThemedView style={styles.container}>
-                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                    {isAuthenticated ? (
-                        <>
+        <ThemedView style={styles.container}>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {isAuthenticated ? (
+                    <>
                             {/* Member Since */}
                             <View style={styles.memberSinceContainer}>
                                 <ThemedText type="defaultSemiBold" style={styles.memberSinceText}>
@@ -357,9 +342,9 @@ export default function AccountScreen() {
                                     Logout
                                 </Text>
                             </TouchableOpacity>
-                        </>
-                    ) : (
-                        <>
+                    </>
+                ) : (
+                    <>
                             {/* Not Logged In State */}
                             <View style={styles.authContainer}>
                                 <CircleUserRound 
@@ -406,11 +391,10 @@ export default function AccountScreen() {
                                     </Text>
                                 </TouchableOpacity>
                             </View>
-                        </>
-                    )}
-                </ScrollView>
-            </ThemedView>
-        </>
+                    </>
+                )}
+            </ScrollView>
+        </ThemedView>
     );
 }
 
