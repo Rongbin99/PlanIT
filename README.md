@@ -34,8 +34,8 @@ Whether you're on vacation or just rediscovering your city, PlanIT helps you mak
 
 ### Android Screenshots
 
-| ![Home Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568740.png) | ![Options Dropdown Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568745.png) | ![History Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568751.png) |
-| ---- | ---- | ---- |
+| ![Home Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568740.png) | ![Options Dropdown Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568745.png) | ![History Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568751.png) | ![Profile Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1756535786.png) |
+| ---- | ---- | ---- | ---- |
 
 ### iOS Screenshots
 
