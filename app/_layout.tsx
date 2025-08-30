@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -38,29 +39,34 @@ export default function RootLayout() {
                         <Stack.Screen 
                             name="account" 
                             options={{ 
-                                headerShown: false,
-                                presentation: 'modal',
+                                headerShown: Platform.OS === 'android' ? false : true,
+                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                headerBackTitle: 'Settings',
+                                title: 'Account',
                             }} 
                         />
                         <Stack.Screen 
                             name="change-password" 
                             options={{ 
-                                headerShown: false,
-                                presentation: 'modal',
+                                headerShown: Platform.OS === 'android' ? false : true,
+                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                title: 'Change Password',
                             }} 
                         />
                         <Stack.Screen 
                             name="login" 
                             options={{ 
-                                headerShown: false,
-                                presentation: 'modal',
+                                headerShown: Platform.OS === 'android' ? false : true,
+                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                title: 'Log In',
                             }} 
                         />
                         <Stack.Screen 
                             name="signup" 
                             options={{ 
-                                headerShown: false,
-                                presentation: 'modal',
+                                headerShown: Platform.OS === 'android' ? false : true,
+                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                title: 'Sign Up',
                             }} 
                         />
                         <Stack.Screen name="+not-found" />
