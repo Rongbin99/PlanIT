@@ -9,19 +9,12 @@ PlanIT is your intelligent trip planner for creating seamless, unforgettable day
 Key Features:
 
 - 🎯 Curated day trips in major cities across the globe
-
 - 🍽️ Fine dining, local gems, or food tours based on your preferences
-
 - 🏛️ Afternoon activities like museums, parks, shopping, or cultural spots
-
 - 🍰 Unique cafés, bakeries, or dessert lounges to end your day sweetly
-
 - 🚇 Real-time directions with transit, walk, and rideshare options
-
 - 🌍 Works in 100+ cities worldwide with localized suggestions
-
 - 🤖 Smart suggestions based on location, weather, crowd trends, and user ratings
-
 - 🗺️ Integrated with Google Maps for smooth navigation
 
 Whether you're on vacation or just rediscovering your city, PlanIT helps you make the most of every moment with zero planning stress.
@@ -31,9 +24,19 @@ Whether you're on vacation or just rediscovering your city, PlanIT helps you mak
 
 ## Preview
 
-![Screenshot 1](https://github.com/Rongbin99/PlanIT/blob/main/assets/images/Screenshot_1754568740.png)
-![Screenshot 2](https://github.com/Rongbin99/PlanIT/blob/main/assets/images/Screenshot_1754568745.png)
-![Screenshot 3](https://github.com/Rongbin99/PlanIT/blob/main/assets/images/Screenshot_1754568751.png)
+### Demo Video
+
+
+
+### Android Screenshots
+
+| ![Home Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568740.png) | ![Options Dropdown Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568745.png) | ![History Screenshot Android](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Screenshot_1754568751.png) |
+| ---- | ---- | ---- |
+
+### iOS Screenshots
+
+| img1 | img2 | img3 |
+| ---- | ---- | ---- |
 
 ## Instructions to Run
 
