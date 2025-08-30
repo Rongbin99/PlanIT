@@ -30,9 +30,7 @@ Whether you're on vacation or just rediscovering your city, PlanIT helps you mak
 
 ### Demo Video
 
-<video src="https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/iOS%20Demo%20Recording.mp4" width="320" height="240" controls></video>
-
-![iOS Demo Recording](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/iOS%20Demo%20Recording.mp4)
+https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/iOS%20Demo%20Recording.mp4
 
 ### Android Screenshots
 
@@ -43,7 +41,7 @@ Whether you're on vacation or just rediscovering your city, PlanIT helps you mak
 
 | ![Home Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.28.55.png) | ![Options Dropdown Price Selection Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.10.png) | ![History Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.18.png) | ![Trip Plan Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.24.png) | ![Location Details Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.36.png) | 
 | ---- | ---- | ---- | ---- | ---- |
-| ![Transit Details Screenshot iOS] (https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.46.png) | ![Location Details Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.58.png) | ![Change Password Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.30.10.png) | ![Theme Selector Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.30.18.png) | ![Maps Provider Selector Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.30.24.png) | 
+| ![Transit Details Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.46.png) | ![Location Details Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.29.58.png) | ![Change Password Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.30.10.png) | ![Theme Selector Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.30.18.png) | ![Maps Provider Selector Screenshot iOS](https://github.com/Rongbin99/PlanIT/blob/main/assets/readme/Simulator%20Screenshot%20-%20iPhone%2016%20Pro%20Max%20-%202025-08-30%20at%2004.30.24.png) | 
 
 ## Instructions to Run
 
