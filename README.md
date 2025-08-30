@@ -5,7 +5,7 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Rongbin99/PlanIT?style=flat)
 
 <div align="center">
-    <img src="https://github.com/Rongbin99/PlanIT/blob/main/assets/images/planit_logo.png" alt="PlanIT Logo" width="24" height="24"/>
+    <img src="https://github.com/Rongbin99/PlanIT/blob/main/assets/images/planit_logo.png" alt="PlanIT Logo" width="128" height="128"/>
 </div>
 
 PlanIT is your intelligent trip planner for creating seamless, unforgettable day-long adventures — whether you’re exploring your hometown or discovering a new city abroad. The app curates ready-made itineraries with a balanced mix of attractions, luxury or local dining, experiences, and dessert or coffee stops, all optimized for walkability and transit.
