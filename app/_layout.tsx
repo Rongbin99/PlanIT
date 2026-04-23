@@ -8,9 +8,22 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider as AppThemeProvider } from '@/contexts/ThemeContext';
+
+/**
+ * Bridges the app's ThemeContext with React Navigation's ThemeProvider so that
+ * navigation surfaces (headers, tab bars) follow the user's chosen theme.
+ */
+function NavigationThemeBridge({ children }: { children: React.ReactNode }) {
+    const colorScheme = useColorScheme();
+    return (
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            {children}
+        </ThemeProvider>
+    );
+}
 
 export default function RootLayout() {
-    const colorScheme = useColorScheme();
     const [loaded] = useFonts({
         Nunito: require('../assets/fonts/Nunito-Regular.ttf'),
         CircularStd: require('../assets/fonts/CircularStd-Medium.otf'),
@@ -24,57 +37,59 @@ export default function RootLayout() {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <AuthProvider>
-                <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                    <Stack>
-                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                        <Stack.Screen 
-                            name="chat" 
-                            options={{ 
-                                headerShown: false,
-                                presentation: 'card',
-                                animation: 'slide_from_right',
-                            }} 
-                        />
-                        <Stack.Screen 
-                            name="account" 
-                            options={{ 
-                                headerShown: Platform.OS === 'android' ? false : true,
-                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
-                                headerBackTitle: 'Settings',
-                                title: 'Account',
-                            }} 
-                        />
-                        <Stack.Screen 
-                            name="change-password" 
-                            options={{ 
-                                headerShown: Platform.OS === 'android' ? false : true,
-                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
-                                headerBackTitle: 'Settings',
-                                title: 'Change Password',
-                            }} 
-                        />
-                        <Stack.Screen 
-                            name="login" 
-                            options={{ 
-                                headerShown: Platform.OS === 'android' ? false : true,
-                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
-                                title: 'Log In',
-                            }} 
-                        />
-                        <Stack.Screen 
-                            name="signup" 
-                            options={{ 
-                                headerShown: Platform.OS === 'android' ? false : true,
-                                presentation: Platform.OS === 'ios' ? 'card' : 'modal',
-                                title: 'Sign Up',
-                            }} 
-                        />
-                        <Stack.Screen name="+not-found" />
-                    </Stack>
-                    <StatusBar style="auto" />
-                </ThemeProvider>
-            </AuthProvider>
+            <AppThemeProvider>
+                <AuthProvider>
+                    <NavigationThemeBridge>
+                        <Stack>
+                            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                            <Stack.Screen
+                                name="chat"
+                                options={{
+                                    headerShown: false,
+                                    presentation: 'card',
+                                    animation: 'slide_from_right',
+                                }}
+                            />
+                            <Stack.Screen
+                                name="account"
+                                options={{
+                                    headerShown: Platform.OS === 'android' ? false : true,
+                                    presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                    headerBackTitle: 'Settings',
+                                    title: 'Account',
+                                }}
+                            />
+                            <Stack.Screen
+                                name="change-password"
+                                options={{
+                                    headerShown: Platform.OS === 'android' ? false : true,
+                                    presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                    headerBackTitle: 'Settings',
+                                    title: 'Change Password',
+                                }}
+                            />
+                            <Stack.Screen
+                                name="login"
+                                options={{
+                                    headerShown: Platform.OS === 'android' ? false : true,
+                                    presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                    title: 'Log In',
+                                }}
+                            />
+                            <Stack.Screen
+                                name="signup"
+                                options={{
+                                    headerShown: Platform.OS === 'android' ? false : true,
+                                    presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+                                    title: 'Sign Up',
+                                }}
+                            />
+                            <Stack.Screen name="+not-found" />
+                        </Stack>
+                        <StatusBar style="auto" />
+                    </NavigationThemeBridge>
+                </AuthProvider>
+            </AppThemeProvider>
         </GestureHandlerRootView>
     );
 }

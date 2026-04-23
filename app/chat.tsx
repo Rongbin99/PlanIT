@@ -17,17 +17,19 @@
 // IMPORTS
 // ========================================
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Star, Tag, Clock, Globe, Phone, MapPin, Route, Lightbulb, RotateCw, Search, Hourglass, ExternalLink, ChevronLeft, MapPinned, Footprints, TrainFrontTunnel, BusFront, TramFront, TrainFront, Ship, Info, X } from 'lucide-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { FlashList } from '@shopify/flash-list';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ICON_SIZES } from '@/constants/DesignTokens';
 import { saveChatToLocalStorage as saveToStorage, StoredChatData, getChatsFromLocalStorage } from '@/constants/StorageUtils';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMapProvider } from '@/constants/MapProvider';
+import { getDefaultMapProvider, getMapProvider, MapProviderType, shouldUseDarkGoogleMap } from '@/constants/MapProvider';
+import { useEffectiveTheme } from '@/contexts/ThemeContext';
+import { GOOGLE_MAP_DARK_STYLE } from '@/constants/GoogleMapStyles';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -191,6 +193,10 @@ const PRICE_RANGE_MAP = {
 // MAIN COMPONENT
 // ========================================
 export default function ChatScreen() {
+    const effectiveTheme = useEffectiveTheme();
+    const [mapProvider, setMapProvider] = useState<MapProviderType>(getDefaultMapProvider());
+    const useDarkGoogleMap = shouldUseDarkGoogleMap(mapProvider, effectiveTheme);
+
     // ========================================
     // STATE MANAGEMENT
     // ========================================
@@ -282,6 +288,23 @@ export default function ChatScreen() {
             console.log(TAG, 'No search data or trip ID found, handling missing data scenario');
             handleMissingData();
         }
+    }, []);
+
+    /**
+     * Sync selected map provider for embedded map rendering.
+     */
+    useEffect(() => {
+        const loadMapProvider = async () => {
+            try {
+                const provider = await getMapProvider();
+                console.log(TAG, 'Active map provider for preview:', provider);
+                setMapProvider(provider);
+            } catch (error) {
+                console.error(TAG, 'Failed to load map provider for preview:', error);
+            }
+        };
+
+        loadMapProvider();
     }, []);
 
     /**
@@ -1339,6 +1362,8 @@ export default function ChatScreen() {
                         >
                             <MapView
                                 style={styles.bottomSheetMap}
+                                provider={mapProvider === 'google' ? PROVIDER_GOOGLE : undefined}
+                                customMapStyle={useDarkGoogleMap ? GOOGLE_MAP_DARK_STYLE : undefined}
                                 initialRegion={{
                                     latitude: bottomSheetLocation?.coordinates?.latitude || FALLBACK_COORDINATES.latitude,
                                     longitude: bottomSheetLocation?.coordinates?.longitude || FALLBACK_COORDINATES.longitude,

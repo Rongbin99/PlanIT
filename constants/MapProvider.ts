@@ -23,4 +23,21 @@ export async function setMapProvider(provider: MapProviderType): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, provider);
 }
 
-export const SNAP_POINTS = Platform.OS === 'ios' ? ['45%'] : ['40%'];
+/**
+ * Returns the default map provider per platform.
+ */
+export function getDefaultMapProvider(platformOS: string = Platform.OS): MapProviderType {
+  return platformOS === 'android' ? 'google' : 'apple';
+}
+
+/**
+ * Whether Google Maps dark style should be applied.
+ */
+export function shouldUseDarkGoogleMap(
+  provider: MapProviderType,
+  effectiveTheme: 'light' | 'dark'
+): boolean {
+  return provider === 'google' && effectiveTheme === 'dark';
+}
+
+export const SNAP_POINTS = ['40%']; // for iOS only: 40%

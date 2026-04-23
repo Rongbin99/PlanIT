@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -35,13 +36,17 @@ export default function ChangePasswordScreen() {
     // ========================================
     // HOOKS & CONTEXT
     // ========================================
-    
+
     const { token } = useAuth();
+    const textColor = useThemeColor('text');
+    const mutedTextColor = useThemeColor('mutedText');
+    const borderColor = useThemeColor('border');
+    const cardColor = useThemeColor('card');
 
     // ========================================
     // STATE MANAGEMENT
     // ========================================
-    
+
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -58,7 +63,7 @@ export default function ChangePasswordScreen() {
 
     const validatePasswords = (): boolean => {
         let isValid = true;
-        
+
         // Reset error states
         setNewPasswordError(false);
         setConfirmPasswordError(false);
@@ -121,7 +126,7 @@ export default function ChangePasswordScreen() {
 
         try {
             setIsLoading(true);
-            
+
             const response = await fetch(API_URLS.USER_PASSWORD, {
                 method: 'PUT',
                 headers: {
@@ -138,7 +143,7 @@ export default function ChangePasswordScreen() {
 
             if (result.success) {
                 console.log(TAG, 'Password change successful');
-                
+
                 Alert.alert(
                     'Success',
                     'Your password has been changed successfully.',
@@ -173,131 +178,131 @@ export default function ChangePasswordScreen() {
 
     return (
         <>
-            <Stack.Screen 
-                options={{ 
+            <Stack.Screen
+                options={{
                     title: 'Change Password',
                     headerShown: true
-                }} 
+                }}
             />
             <ThemedView style={styles.container}>
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Current Password */}
-                <View style={styles.inputGroup}>
-                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>
-                        Current Password
-                    </ThemedText>
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.textInput}
-                            value={currentPassword}
-                            onChangeText={setCurrentPassword}
-                            placeholder="Enter your current password"
-                            placeholderTextColor={COLORS.lightText}
-                            secureTextEntry={!showCurrentPassword}
-                            autoCapitalize="none"
-                            autoComplete="current-password"
-                            editable={!isLoading}
-                        />
-                        <TouchableOpacity
-                            style={styles.eyeButton}
-                            onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                            accessibilityLabel={showCurrentPassword ? "Hide password" : "Show password"}
-                        >
-                            {showCurrentPassword ? <EyeOff size={ICON_SIZES.lg} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.lg} color={COLORS.lightText} />}
-                        </TouchableOpacity>
+                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    {/* Current Password */}
+                    <View style={styles.inputGroup}>
+                        <ThemedText type="defaultSemiBold" style={[styles.inputLabel, { color: textColor }]}>
+                            Current Password
+                        </ThemedText>
+                        <View style={[styles.inputContainer, { borderColor, backgroundColor: cardColor }]}>
+                            <TextInput
+                                style={[styles.textInput, { color: textColor }]}
+                                value={currentPassword}
+                                onChangeText={setCurrentPassword}
+                                placeholder="Enter your current password"
+                                placeholderTextColor={mutedTextColor}
+                                secureTextEntry={!showCurrentPassword}
+                                autoCapitalize="none"
+                                autoComplete="current-password"
+                                editable={!isLoading}
+                            />
+                            <TouchableOpacity
+                                style={styles.eyeButton}
+                                onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                                accessibilityLabel={showCurrentPassword ? "Hide password" : "Show password"}
+                            >
+                                {showCurrentPassword ? <EyeOff size={ICON_SIZES.lg} color={mutedTextColor} /> : <Eye size={ICON_SIZES.lg} color={mutedTextColor} />}
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
 
-                {/* New Password */}
-                <View style={styles.inputGroup}>
-                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>
-                        New Password
-                    </ThemedText>
-                    <View style={[styles.inputContainer, newPasswordError && styles.inputContainerError]}>
-                        <TextInput
-                            style={styles.textInput}
-                            value={newPassword}
-                            onChangeText={handleNewPasswordChange}
-                            placeholder="Enter your new password"
-                            placeholderTextColor={COLORS.lightText}
-                            secureTextEntry={!showNewPassword}
-                            autoCapitalize="none"
-                            autoComplete="new-password"
-                            editable={!isLoading}
-                        />
-                        <TouchableOpacity
-                            style={styles.eyeButton}
-                            onPress={() => setShowNewPassword(!showNewPassword)}
-                            accessibilityLabel={showNewPassword ? "Hide password" : "Show password"}
-                        >
-                            {showNewPassword ? <EyeOff size={ICON_SIZES.lg} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.lg} color={COLORS.lightText} />}
-                        </TouchableOpacity>
+                    {/* New Password */}
+                    <View style={styles.inputGroup}>
+                        <ThemedText type="defaultSemiBold" style={[styles.inputLabel, { color: textColor }]}>
+                            New Password
+                        </ThemedText>
+                        <View style={[styles.inputContainer, { borderColor, backgroundColor: cardColor }, newPasswordError && styles.inputContainerError]}>
+                            <TextInput
+                                style={[styles.textInput, { color: textColor }]}
+                                value={newPassword}
+                                onChangeText={handleNewPasswordChange}
+                                placeholder="Enter your new password"
+                                placeholderTextColor={mutedTextColor}
+                                secureTextEntry={!showNewPassword}
+                                autoCapitalize="none"
+                                autoComplete="new-password"
+                                editable={!isLoading}
+                            />
+                            <TouchableOpacity
+                                style={styles.eyeButton}
+                                onPress={() => setShowNewPassword(!showNewPassword)}
+                                accessibilityLabel={showNewPassword ? "Hide password" : "Show password"}
+                            >
+                                {showNewPassword ? <EyeOff size={ICON_SIZES.lg} color={mutedTextColor} /> : <Eye size={ICON_SIZES.lg} color={mutedTextColor} />}
+                            </TouchableOpacity>
+                        </View>
+                        <ThemedText style={[styles.helpText, { color: mutedTextColor }]}>
+                            Password must be at least 6 characters long
+                        </ThemedText>
                     </View>
-                    <ThemedText style={styles.helpText}>
-                        Password must be at least 6 characters long
-                    </ThemedText>
-                </View>
 
-                {/* Confirm Password */}
-                <View style={styles.inputGroup}>
-                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>
-                        Confirm New Password
-                    </ThemedText>
-                    <View style={[styles.inputContainer, confirmPasswordError && styles.inputContainerError]}>
-                        <TextInput
-                            style={styles.textInput}
-                            value={confirmPassword}
-                            onChangeText={handleConfirmPasswordChange}
-                            placeholder="Confirm your new password"
-                            placeholderTextColor={COLORS.lightText}
-                            secureTextEntry={!showConfirmPassword}
-                            autoCapitalize="none"
-                            autoComplete="new-password"
-                            editable={!isLoading}
-                        />
-                        <TouchableOpacity
-                            style={styles.eyeButton}
-                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                            accessibilityLabel={showConfirmPassword ? "Hide password" : "Show password"}
-                        >
-                            {showConfirmPassword ? <EyeOff size={ICON_SIZES.lg} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.lg} color={COLORS.lightText} />}
-                        </TouchableOpacity>
+                    {/* Confirm Password */}
+                    <View style={styles.inputGroup}>
+                        <ThemedText type="defaultSemiBold" style={[styles.inputLabel, { color: textColor }]}>
+                            Confirm New Password
+                        </ThemedText>
+                        <View style={[styles.inputContainer, { borderColor, backgroundColor: cardColor }, confirmPasswordError && styles.inputContainerError]}>
+                            <TextInput
+                                style={[styles.textInput, { color: textColor }]}
+                                value={confirmPassword}
+                                onChangeText={handleConfirmPasswordChange}
+                                placeholder="Confirm your new password"
+                                placeholderTextColor={mutedTextColor}
+                                secureTextEntry={!showConfirmPassword}
+                                autoCapitalize="none"
+                                autoComplete="new-password"
+                                editable={!isLoading}
+                            />
+                            <TouchableOpacity
+                                style={styles.eyeButton}
+                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                accessibilityLabel={showConfirmPassword ? "Hide password" : "Show password"}
+                            >
+                                {showConfirmPassword ? <EyeOff size={ICON_SIZES.lg} color={mutedTextColor} /> : <Eye size={ICON_SIZES.lg} color={mutedTextColor} />}
+                            </TouchableOpacity>
+                        </View>
+                        <ThemedText style={[styles.helpText, { color: mutedTextColor }]}>
+                            Passwords must match
+                        </ThemedText>
                     </View>
-                    <ThemedText style={styles.helpText}>
-                        Passwords must match
-                    </ThemedText>
-                </View>
 
-                {/* Change Password Button */}
-                <TouchableOpacity
-                    style={[
-                        styles.changePasswordButton,
-                        (isLoading || !currentPassword || !newPassword || !confirmPassword || newPasswordError || confirmPasswordError) && styles.buttonDisabled
-                    ]}
-                    onPress={handleChangePassword}
-                    disabled={isLoading || !currentPassword || !newPassword || !confirmPassword || newPasswordError || confirmPasswordError}
-                    accessibilityLabel="Change password"
-                    accessibilityRole="button"
-                >
-                    {isLoading ? (
-                        <ActivityIndicator 
-                            size={24} 
-                            color={COLORS.white} 
-                        />
-                    ) : (
-                        <>
-                            <RotateCcwKey
-                                size={ICON_SIZES.xl}
+                    {/* Change Password Button */}
+                    <TouchableOpacity
+                        style={[
+                            styles.changePasswordButton,
+                            (isLoading || !currentPassword || !newPassword || !confirmPassword || newPasswordError || confirmPasswordError) && [styles.buttonDisabled, { backgroundColor: mutedTextColor }]
+                        ]}
+                        onPress={handleChangePassword}
+                        disabled={isLoading || !currentPassword || !newPassword || !confirmPassword || newPasswordError || confirmPasswordError}
+                        accessibilityLabel="Change password"
+                        accessibilityRole="button"
+                    >
+                        {isLoading ? (
+                            <ActivityIndicator
+                                size={24}
                                 color={COLORS.white}
                             />
-                            <Text style={styles.buttonText}>
-                                Change Password
-                            </Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-            </ScrollView>
-        </ThemedView>
+                        ) : (
+                            <>
+                                <RotateCcwKey
+                                    size={ICON_SIZES.xl}
+                                    color={COLORS.white}
+                                />
+                                <Text style={styles.buttonText}>
+                                    Change Password
+                                </Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </ScrollView>
+            </ThemedView>
         </>
     );
 }
@@ -319,15 +324,12 @@ const styles = StyleSheet.create({
     },
     inputLabel: {
         marginBottom: SPACING.sm,
-        color: COLORS.text,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: COLORS.border,
         borderRadius: RADIUS.md,
-        backgroundColor: COLORS.white,
         ...SHADOWS.card,
     },
     textInput: {
@@ -335,7 +337,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.lg,
         paddingVertical: SPACING.md,
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.text,
     },
     inputContainerError: {
         borderColor: '#e74c3c',
@@ -347,7 +348,6 @@ const styles = StyleSheet.create({
     helpText: {
         marginTop: SPACING.xs,
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.lightText,
     },
     changePasswordButton: {
         flexDirection: 'row',
@@ -370,4 +370,4 @@ const styles = StyleSheet.create({
         fontSize: TYPOGRAPHY.fontSize.base,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
     },
-}); 
+});

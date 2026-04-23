@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -35,13 +36,17 @@ export default function SignupScreen() {
     // ========================================
     // HOOKS & CONTEXT
     // ========================================
-    
+
     const { signup, isLoading: authLoading } = useAuth();
+    const textColor = useThemeColor('text');
+    const mutedTextColor = useThemeColor('mutedText');
+    const borderColor = useThemeColor('border');
+    const cardColor = useThemeColor('card');
 
     // ========================================
     // STATE MANAGEMENT
     // ========================================
-    
+
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -80,7 +85,7 @@ export default function SignupScreen() {
 
     const validateForm = (): boolean => {
         let isValid = true;
-        
+
         // Reset error states
         setNameError(false);
         setEmailError(false);
@@ -159,15 +164,15 @@ export default function SignupScreen() {
 
         try {
             setIsLoading(true);
-            
+
             const success = await signup(email.trim(), password, name.trim());
-            
+
             if (success) {
                 console.log(TAG, 'Signup successful, navigating back');
                 router.back();
             }
             // Error handling is done in the auth context
-            
+
         } catch (error) {
             console.error(TAG, 'Signup error:', error);
             Alert.alert('Error', 'An unexpected error occurred. Please try again.');
@@ -197,34 +202,34 @@ export default function SignupScreen() {
 
     return (
         <>
-            <Stack.Screen 
+            <Stack.Screen
                 options={{
                     title: 'Sign Up',
                     headerShown: true
                 }}
             />
-            
-            <KeyboardAvoidingView 
+
+            <KeyboardAvoidingView
                 style={styles.container}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ThemedView style={styles.container}>
-                    <ScrollView 
+                    <ScrollView
                         contentContainerStyle={styles.scrollContent}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                     >
                         {/* Title Section */}
                         <View style={styles.titleSection}>
-                            <UserRoundPlus 
-                                size={80} 
-                                color={COLORS.primary} 
+                            <UserRoundPlus
+                                size={80}
+                                color={COLORS.primary}
                                 style={styles.titleIcon}
                             />
                             <ThemedText type="title" style={styles.title}>
                                 Create Account
                             </ThemedText>
-                            <ThemedText style={styles.subtitle}>
+                            <ThemedText style={[styles.subtitle, { color: mutedTextColor }]}>
                                 Join PlanIT to start planning amazing adventures
                             </ThemedText>
                         </View>
@@ -233,22 +238,22 @@ export default function SignupScreen() {
                         <View style={styles.formSection}>
                             {/* Name Input */}
                             <View style={styles.inputContainer}>
-                                <Text style={styles.label}>Full Name</Text>
-                                <View style={[styles.inputWrapper, nameError && styles.inputError]}>
-                                    <IdCardLanyard 
+                                <Text style={[styles.label, { color: textColor }]}>Full Name</Text>
+                                <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }, nameError && styles.inputError]}>
+                                    <IdCardLanyard
                                         size={ICON_SIZES.md}
-                                        color={nameError ? COLORS.error : COLORS.lightText}
+                                        color={nameError ? COLORS.error : mutedTextColor}
                                         style={styles.inputIcon}
                                     />
                                     <TextInput
-                                        style={styles.textInput}
+                                        style={[styles.textInput, { color: textColor }]}
                                         value={name}
                                         onChangeText={(text) => {
                                             setName(text);
                                             setNameError(false);
                                         }}
                                         placeholder="Enter your full name"
-                                        placeholderTextColor={COLORS.lightText}
+                                        placeholderTextColor={mutedTextColor}
                                         autoCapitalize="words"
                                         autoCorrect={false}
                                         editable={!isLoading}
@@ -259,19 +264,19 @@ export default function SignupScreen() {
 
                             {/* Email Input */}
                             <View style={styles.inputContainer}>
-                                <Text style={styles.label}>Email Address</Text>
-                                <View style={[styles.inputWrapper, emailError && styles.inputError]}>
+                                <Text style={[styles.label, { color: textColor }]}>Email Address</Text>
+                                <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }, emailError && styles.inputError]}>
                                     <Mail
                                         size={ICON_SIZES.md}
-                                        color={emailError ? COLORS.error : COLORS.lightText}
+                                        color={emailError ? COLORS.error : mutedTextColor}
                                         style={styles.inputIcon}
                                     />
                                     <TextInput
-                                        style={styles.textInput}
+                                        style={[styles.textInput, { color: textColor }]}
                                         value={email}
                                         onChangeText={handleEmailChange}
                                         placeholder="Enter your email"
-                                        placeholderTextColor={COLORS.lightText}
+                                        placeholderTextColor={mutedTextColor}
                                         keyboardType="email-address"
                                         autoCapitalize="none"
                                         autoCorrect={false}
@@ -287,19 +292,19 @@ export default function SignupScreen() {
 
                             {/* Password Input */}
                             <View style={styles.inputContainer}>
-                                <Text style={styles.label}>Password</Text>
-                                <View style={[styles.inputWrapper, passwordError && styles.inputError]}>
+                                <Text style={[styles.label, { color: textColor }]}>Password</Text>
+                                <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }, passwordError && styles.inputError]}>
                                     <LockKeyholeOpen
                                         size={ICON_SIZES.md}
-                                        color={passwordError ? COLORS.error : COLORS.lightText}
+                                        color={passwordError ? COLORS.error : mutedTextColor}
                                         style={styles.inputIcon}
                                     />
                                     <TextInput
-                                        style={styles.textInput}
+                                        style={[styles.textInput, { color: textColor }]}
                                         value={password}
                                         onChangeText={handlePasswordChange}
                                         placeholder="Enter your password"
-                                        placeholderTextColor={COLORS.lightText}
+                                        placeholderTextColor={mutedTextColor}
                                         secureTextEntry={!showPassword}
                                         autoCapitalize="none"
                                         autoCorrect={false}
@@ -316,29 +321,29 @@ export default function SignupScreen() {
                                         accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                                         accessibilityRole="button"
                                     >
-                                        {showPassword ? <EyeOff size={ICON_SIZES.md} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.md} color={COLORS.lightText} />}
+                                        {showPassword ? <EyeOff size={ICON_SIZES.md} color={mutedTextColor} /> : <Eye size={ICON_SIZES.md} color={mutedTextColor} />}
                                     </TouchableOpacity>
                                 </View>
-                                <ThemedText style={styles.helpText}>
+                                <ThemedText style={[styles.helpText, { color: mutedTextColor }]}>
                                     Password must be at least 6 characters long
                                 </ThemedText>
                             </View>
 
                             {/* Confirm Password Input */}
                             <View style={styles.inputContainer}>
-                                <Text style={styles.label}>Confirm Password</Text>
-                                <View style={[styles.inputWrapper, confirmPasswordError && styles.inputError]}>
-                                    <LockKeyhole 
+                                <Text style={[styles.label, { color: textColor }]}>Confirm Password</Text>
+                                <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }, confirmPasswordError && styles.inputError]}>
+                                    <LockKeyhole
                                         size={ICON_SIZES.md}
-                                        color={confirmPasswordError ? COLORS.error : COLORS.lightText}
+                                        color={confirmPasswordError ? COLORS.error : mutedTextColor}
                                         style={styles.inputIcon}
                                     />
                                     <TextInput
-                                        style={styles.textInput}
+                                        style={[styles.textInput, { color: textColor }]}
                                         value={confirmPassword}
                                         onChangeText={handleConfirmPasswordChange}
                                         placeholder="Confirm your password"
-                                        placeholderTextColor={COLORS.lightText}
+                                        placeholderTextColor={mutedTextColor}
                                         secureTextEntry={!showConfirmPassword}
                                         autoCapitalize="none"
                                         autoCorrect={false}
@@ -355,10 +360,10 @@ export default function SignupScreen() {
                                         accessibilityLabel={showConfirmPassword ? "Hide password" : "Show password"}
                                         accessibilityRole="button"
                                     >
-                                        {showConfirmPassword ? <EyeOff size={ICON_SIZES.md} color={COLORS.lightText} /> : <Eye size={ICON_SIZES.md} color={COLORS.lightText} />}
+                                        {showConfirmPassword ? <EyeOff size={ICON_SIZES.md} color={mutedTextColor} /> : <Eye size={ICON_SIZES.md} color={mutedTextColor} />}
                                     </TouchableOpacity>
                                 </View>
-                                <ThemedText style={styles.helpText}>
+                                <ThemedText style={[styles.helpText, { color: mutedTextColor }]}>
                                     Passwords must match
                                 </ThemedText>
                             </View>
@@ -398,7 +403,7 @@ export default function SignupScreen() {
 
                         {/* Login Section */}
                         <View style={styles.loginSection}>
-                            <ThemedText style={styles.loginText}>
+                            <ThemedText style={[styles.loginText, { color: mutedTextColor }]}>
                                 Already have an account?
                             </ThemedText>
                             <TouchableOpacity
@@ -427,52 +432,49 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    
+
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: SPACING.lg,
         paddingBottom: SPACING.xl,
     },
-    
+
     titleSection: {
         alignItems: 'center',
         marginTop: SPACING.lg,
         marginBottom: SPACING.xl,
     },
-    
+
     titleIcon: {
         marginBottom: SPACING.md,
     },
-    
+
     title: {
         fontSize: TYPOGRAPHY.fontSize.xl,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
         textAlign: 'center',
         marginBottom: SPACING.sm,
-        color: COLORS.text,
     },
-    
+
     subtitle: {
         fontSize: TYPOGRAPHY.fontSize.base,
         textAlign: 'center',
-        color: COLORS.lightText,
     },
-    
+
     formSection: {
         marginBottom: SPACING.xl,
     },
-    
+
     inputContainer: {
         marginBottom: SPACING.lg,
     },
-    
+
     label: {
         fontSize: TYPOGRAPHY.fontSize.sm,
         fontWeight: TYPOGRAPHY.fontWeight.medium,
-        color: COLORS.text,
         marginBottom: SPACING.sm,
     },
-    
+
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -483,34 +485,32 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.md,
         minHeight: 50,
     },
-    
+
     inputError: {
         borderColor: COLORS.error,
         backgroundColor: COLORS.errorBackground,
     },
-    
+
     inputIcon: {
         marginRight: SPACING.sm,
     },
-    
+
     textInput: {
         flex: 1,
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.text,
         paddingVertical: SPACING.sm,
     },
-    
+
     passwordToggle: {
         padding: SPACING.xs,
         marginLeft: SPACING.sm,
     },
-    
+
     helpText: {
         marginTop: SPACING.xs,
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.lightText,
     },
-    
+
     signupButton: {
         backgroundColor: COLORS.primary,
         borderRadius: RADIUS.md,
@@ -520,34 +520,34 @@ const styles = StyleSheet.create({
         marginTop: SPACING.lg,
         ...SHADOWS.sm,
     },
-    
+
     signupButtonDisabled: {
         backgroundColor: COLORS.disabled,
         opacity: 0.6,
     },
-    
+
     buttonContent: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: SPACING.sm,
     },
-    
+
     loadingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: SPACING.sm,
     },
-    
+
     loadingIcon: {
         transform: [{ rotate: '45deg' }],
     },
-    
+
     buttonText: {
         color: COLORS.white,
         fontSize: TYPOGRAPHY.fontSize.base,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
     },
-    
+
     loginSection: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -555,12 +555,11 @@ const styles = StyleSheet.create({
         gap: SPACING.xs,
         marginTop: SPACING.lg,
     },
-    
+
     loginText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.lightText,
     },
-    
+
     loginLink: {
         fontSize: TYPOGRAPHY.fontSize.sm,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
