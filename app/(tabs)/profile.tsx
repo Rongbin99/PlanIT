@@ -421,7 +421,6 @@ export default function ProfileScreen() {
                 appearanceActionSheetRef.current?.show();
                 break;
             default:
-                // TODO: Implement other settings screens
                 console.log(TAG, `Setting "${settingName}" not implemented yet`);
                 break;
         }

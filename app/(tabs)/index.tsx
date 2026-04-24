@@ -87,7 +87,7 @@ const HOME_SPACING = {
 } as const;
 
 // Layout constants
-const DROPDOWN_HEIGHT_PERCENTAGE = Platform.OS === 'android' ? 0.80 : 0.75; // TODO: optimize, maybe 75% for both platforms
+const DROPDOWN_HEIGHT_PERCENTAGE = Platform.OS === 'android' ? 0.70 : 0.75;
 const DROPDOWN_HEIGHT = SCREEN_HEIGHT * DROPDOWN_HEIGHT_PERCENTAGE;
 const BORDER_WIDTH = 3;
 
