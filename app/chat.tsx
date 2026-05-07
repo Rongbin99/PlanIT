@@ -24,7 +24,8 @@ import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/botto
 import { FlashList } from '@shopify/flash-list';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ICON_SIZES } from '@/constants/DesignTokens';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ICON_SIZES, CHAT_COLORS } from '@/constants/DesignTokens';
+import { Colors as APP_COLORS } from '@/constants/Colors';
 import { saveChatToLocalStorage as saveToStorage, StoredChatData, getChatsFromLocalStorage } from '@/constants/StorageUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDefaultMapProvider, getMapProvider, MapProviderType, shouldUseDarkGoogleMap } from '@/constants/MapProvider';
@@ -150,16 +151,6 @@ const FALLBACK_COORDINATES = {
 }
 
 /**
- * Chat-specific constants not in design tokens
- */
-const CHAT_COLORS = {
-    userBubble: COLORS.primary,
-    aiBubble: '#e9ecef',
-    userText: COLORS.white,
-    aiText: COLORS.text,
-} as const;
-
-/**
  * Animation configuration
  */
 const ANIMATION_CONFIG = {
@@ -203,9 +194,9 @@ export default function ChatScreen() {
     const textColor = useThemeColor('text');
     const mutedTextColor = useThemeColor('mutedText');
     const isDark = effectiveTheme === 'dark';
-    const aiBubbleBg = isDark ? '#2a2e30' : CHAT_COLORS.aiBubble;
-    const subtleSurface = isDark ? '#1f2325' : '#f8f9fa';
-    const locationCardBg = isDark ? '#343a3d' : COLORS.white;
+    const aiBubbleBg = isDark ? APP_COLORS.dark.border : CHAT_COLORS.aiBubble;
+    const subtleSurface = isDark ? APP_COLORS.dark.card : APP_COLORS.light.subtleSurface;
+    const locationCardBg = isDark ? APP_COLORS.dark.locationCard : COLORS.white;
 
     // ========================================
     // STATE MANAGEMENT

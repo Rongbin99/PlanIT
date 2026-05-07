@@ -2,8 +2,6 @@
  * MapsProviderActionSheet Component
  *
  * A reusable ActionSheet component for maps provider selection (Apple, Google).
- * Reads and writes the user's preference via `MapProviderContext` so the change is
- * applied app-wide immediately.
  *
  * @author Rongbin Gu (@rongbin99)
  */

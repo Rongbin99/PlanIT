@@ -1,6 +1,6 @@
 /**
  * Google Maps dark style configuration.
- * Applied on Android when app theme is dark.
+ * Applied when the map provider is Google and the effective theme is dark.
  */
 export const GOOGLE_MAP_DARK_STYLE = [
     { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },

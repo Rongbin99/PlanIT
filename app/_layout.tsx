@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
+import type { ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -14,7 +15,7 @@ import { ThemeProvider as AppThemeProvider } from '@/contexts/ThemeContext';
  * Bridges the app's ThemeContext with React Navigation's ThemeProvider so that
  * navigation surfaces (headers, tab bars) follow the user's chosen theme.
  */
-function NavigationThemeBridge({ children }: { children: React.ReactNode }) {
+function NavigationThemeBridge({ children }: { children: ReactNode }) {
     const colorScheme = useColorScheme();
     return (
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
