@@ -22,6 +22,7 @@ import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TIME_
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
 import { getChatsFromLocalStorage, convertChatsToHistoryItems, mergeChatsWithLocal, deleteChatFromLocalStorage, TripPlanHistoryItem, ImageData } from '@/constants/StorageUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -104,7 +105,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
             original_location: "Toronto, ON, Canada",
             search_query: "Toronto skyline",
             cached_at: "2025-07-02T02:05:42.551Z"
-      },
+        },
     },
     {
         id: 'trip_002',
@@ -126,7 +127,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
             original_location: "Montreal, QC, Canada",
             search_query: "Montreal skyline",
             cached_at: "2025-07-02T02:05:42.559Z"
-      },
+        },
     },
     {
         id: 'trip_003',
@@ -148,7 +149,7 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
             original_location: "Vancouver, BC, Canada",
             search_query: "Vancouver skyline",
             cached_at: "2025-07-02T02:05:42.553Z"
-      },
+        },
     },
 ];
 
@@ -159,7 +160,12 @@ const SAMPLE_TRIP_PLAN_DATA: TripPlanHistoryItem[] = [
 export default function HistoryScreen() {
     // Auth context
     const { user, isAuthenticated, token } = useAuth();
-    
+
+    // Theme colors
+    const cardBackground = useThemeColor('card');
+    const dividerColor = useThemeColor('divider');
+    const mutedTextColor = useThemeColor('mutedText');
+
     // State management
     const [tripPlanHistory, setTripPlanHistory] = useState<TripPlanHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -167,7 +173,7 @@ export default function HistoryScreen() {
     const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
     const [cacheRefreshing, setCacheRefreshing] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
-    
+
     // Ref to track if component is mounted
     const isMountedRef = useRef(true);
 
@@ -180,7 +186,7 @@ export default function HistoryScreen() {
             cacheRefreshing,
             lastUpdateTime: lastUpdateTime > 0 ? new Date(lastUpdateTime).toISOString() : 'never'
         });
-        
+
         // Cleanup function to set mounted state
         return () => {
             isMountedRef.current = false;
@@ -192,18 +198,18 @@ export default function HistoryScreen() {
      */
     useEffect(() => {
         console.log(TAG, 'Component mounted, triggering initial refresh');
-        
+
         const initializeScreen = async () => {
             try {
                 // Set refreshing state to show loading indicator
                 setRefreshing(true);
-                
+
                 // Perform initial data load with forced refresh to get latest data
                 await loadTripPlanHistoryWithCache(true);
-                
+
                 // Mark as initialized
                 setIsInitialized(true);
-                
+
                 console.log(TAG, 'Initial screen refresh completed successfully');
             } catch (error) {
                 console.error(TAG, 'Initial screen refresh failed:', error);
@@ -211,10 +217,10 @@ export default function HistoryScreen() {
                 setRefreshing(false);
             }
         };
-        
+
         initializeScreen();
     }, []); // Empty dependency array ensures this only runs on mount
-    
+
     /**
      * Load trip plan history when screen comes into focus
      * Uses useFocusEffect to refresh data when user returns to this tab
@@ -228,33 +234,33 @@ export default function HistoryScreen() {
                 console.log(TAG, 'Screen focused but not initialized yet, skipping');
                 return;
             }
-            
+
             console.log(TAG, 'Screen focused, loading trip plan history with cache check');
-            
+
             // Add a small delay to ensure any pending save operations complete
             // This prevents race conditions when navigating back from chat screens
             const loadWithDelay = async () => {
                 // Set cache refreshing state for visual feedback
                 setCacheRefreshing(true);
-                
+
                 // Small delay to allow storage operations to complete
                 await new Promise(resolve => setTimeout(resolve, 150));
-                
+
                 // Only proceed if component is still mounted
                 if (isMountedRef.current) {
                     await loadTripPlanHistoryWithCache();
                 }
-                
+
                 // Clear cache refreshing state
                 setCacheRefreshing(false);
             };
-            
+
             loadWithDelay();
         }, [isInitialized])
     );
 
     // Data management
-    
+
     /**
      * Loads trip plan history with improved caching mechanism
      * Forces fresh load from storage to ensure latest data is displayed
@@ -268,44 +274,44 @@ export default function HistoryScreen() {
                 isAuthenticated
             });
             setIsLoading(true);
-            
+
             // Force fresh load from local storage (bypass any potential cache issues)
             const localTripPlans = await forceLoadFromStorage();
             console.log(TAG, 'Force-loaded', localTripPlans.length, 'trip plans from storage');
-            
+
             // Update last update time for cache tracking
             const currentTime = Date.now();
             setLastUpdateTime(currentTime);
-            
+
             // Skip API fetching in demo mode
             if (DEMO_MODE) {
                 console.info(TAG, 'Demo mode enabled, using local data only');
                 setTripPlanHistory(localTripPlans);
                 return;
             }
-            
+
             // For non-authenticated users, only use local storage
             if (!isAuthenticated) {
                 console.log(TAG, 'User not authenticated, using local data only');
                 setTripPlanHistory(localTripPlans);
                 return;
             }
-            
+
             // For authenticated users, show local data immediately for better UX (unless forcing refresh)
             if (localTripPlans.length > 0 && !forceRefresh) {
                 setTripPlanHistory(localTripPlans);
             }
-            
+
             // Then fetch from API and merge with local data (authenticated users only)
             try {
                 console.log(TAG, 'User authenticated, fetching from API and merging with local data');
                 const apiTripPlans = await fetchTripPlanHistoryFromAPI();
                 console.log(TAG, 'Fetched', apiTripPlans.length, 'trip plans from API');
-                
+
                 // Merge API data with local data (API takes priority)
                 const mergedTripPlans = mergeChatsWithLocal(apiTripPlans, localTripPlans);
                 console.log(TAG, 'Merged data: API +', apiTripPlans.length, 'Local +', localTripPlans.length, '= Total', mergedTripPlans.length);
-                
+
                 setTripPlanHistory(mergedTripPlans);
                 // Note: We don't save API data to AsyncStorage here because chats are saved
                 // individually when created. This avoids overwriting newer local data.
@@ -332,17 +338,17 @@ export default function HistoryScreen() {
     const forceLoadFromStorage = async (): Promise<TripPlanHistoryItem[]> => {
         try {
             console.log(TAG, 'Force loading fresh data from local storage');
-            
+
             // If demo mode is enabled, use sample data
             if (DEMO_MODE) {
                 console.info(TAG, 'Demo mode enabled, using sample data');
                 return SAMPLE_TRIP_PLAN_DATA;
             }
-            
+
             // Force a fresh read from AsyncStorage (no caching)
             const storedChats = await getChatsFromLocalStorage(true); // Force refresh
             const tripPlans = convertChatsToHistoryItems(storedChats);
-            
+
             console.log(TAG, 'Force-loaded', tripPlans.length, 'trip plans from storage at', new Date().toISOString());
             return tripPlans;
         } catch (error) {
@@ -374,13 +380,13 @@ export default function HistoryScreen() {
      */
     const fetchTripPlanHistoryFromAPI = async (): Promise<TripPlanHistoryItem[]> => {
         console.log(TAG, `Fetching trip plan history from API: ${API_URLS.CHAT_HISTORY}`);
-        
+
         // Include authorization header if user is authenticated
         const headers = {
             ...DEFAULT_HEADERS,
             ...(isAuthenticated && token && { Authorization: `Bearer ${token}` })
         };
-        
+
         const response = await fetch(API_URLS.CHAT_HISTORY, {
             method: 'GET',
             headers,
@@ -440,14 +446,14 @@ export default function HistoryScreen() {
     const onRefresh = async (): Promise<void> => {
         console.log(TAG, 'Pull-to-refresh triggered - forcing cache refresh');
         setRefreshing(true);
-        
+
         try {
             // Force a fresh load with cache refresh and bypass local data display
             await loadTripPlanHistoryWithCache(true);
-            
+
             // Update last update time to track refresh
             setLastUpdateTime(Date.now());
-            
+
             console.log(TAG, 'Pull-to-refresh completed successfully');
         } catch (error) {
             console.error(TAG, 'Pull-to-refresh failed:', error);
@@ -483,7 +489,7 @@ export default function HistoryScreen() {
     };
 
     // Navigation Handlers
-    
+
     /**
      * Handles navigation to existing trip planning session
      * @param tripPlan - Trip planning session to open
@@ -495,7 +501,7 @@ export default function HistoryScreen() {
             title: tripPlan.title,
             location: tripPlan.location
         });
-        
+
         try {
             // Navigate to the chat screen with the trip plan ID
             router.push({
@@ -517,7 +523,7 @@ export default function HistoryScreen() {
      */
     const handleStartExploring = (): void => {
         console.log(TAG, 'Start exploring button pressed');
-        
+
         try {
             // Navigate to the main screen (index.tsx)
             router.push('/(tabs)/' as any);
@@ -529,7 +535,7 @@ export default function HistoryScreen() {
     };
 
     // Trip Plan Management
-    
+
     /**
      * Handles trip plan deletion with confirmation
      * @param tripPlanId - ID of trip plan to delete
@@ -541,7 +547,7 @@ export default function HistoryScreen() {
             title: tripPlanToDelete?.title,
             location: tripPlanToDelete?.location
         });
-        
+
         // Popup confirmation for deletion from user
         Alert.alert(
             'Delete Trip Plan',
@@ -573,12 +579,12 @@ export default function HistoryScreen() {
     const performTripPlanDeletion = async (tripPlanId: string): Promise<void> => {
         try {
             console.log(TAG, 'Starting trip plan deletion process for:', tripPlanId);
-            
+
             // Update local state immediately for responsive UX
             const updatedTripPlans = tripPlanHistory.filter(tripPlan => tripPlan.id !== tripPlanId);
             setTripPlanHistory(updatedTripPlans);
             console.log(TAG, 'UI state updated, remaining trip plans:', updatedTripPlans.length);
-            
+
             // Delete from local storage
             try {
                 await deleteChatFromLocalStorage(tripPlanId);
@@ -586,24 +592,24 @@ export default function HistoryScreen() {
             } catch (storageError) {
                 console.warn(TAG, 'Failed to delete from local storage:', storageError);
             }
-            
+
             // Send delete request to backend
             try {
                 console.log(TAG, 'Sending delete request to API');
-                
+
                 // Include authorization header if user is authenticated
                 const headers = {
                     ...DEFAULT_HEADERS,
                     ...(isAuthenticated && token && { Authorization: `Bearer ${token}` })
                 };
-                
+
                 const response = await fetch(API_URLS.DELETE_CHAT(tripPlanId), {
                     method: 'DELETE',
                     headers,
                 });
-                
+
                 console.log(TAG, 'Delete API response status:', response.status, response.statusText);
-                
+
                 if (!response.ok) {
                     throw new Error(`Failed to delete from server: ${response.status} ${response.statusText}`);
                 }
@@ -622,7 +628,7 @@ export default function HistoryScreen() {
     };
 
     // Utility Functions
-    
+
     /**
      * Safely extracts image URL from trip data, preferring thumbnail over full URL
      * @param trip - Trip plan item
@@ -632,16 +638,16 @@ export default function HistoryScreen() {
         if (!trip.image) {
             return null;
         }
-        
+
         // Extract URL from ImageData object, preferring thumbnail
         if (typeof trip.image === 'object' && trip.image !== null) {
             return trip.image.thumbnail || trip.image.url;
         }
-        
+
         // This shouldn't happen with the current structure, but adding for safety
         return null;
     };
-    
+
     /**
      * Formats timestamp for display in trip plan list
      * @param timestamp - ISO timestamp string
@@ -651,12 +657,12 @@ export default function HistoryScreen() {
         const date = new Date(timestamp);
         const now = new Date();
         const diff = now.getTime() - date.getTime();
-        
+
         // Calculate hours and days since timestamp
         const minutes = Math.floor(diff / TIME_CONSTANTS.MINUTE_MS);
         const hours = Math.floor(diff / TIME_CONSTANTS.HOUR_MS);
         const days = Math.floor(diff / TIME_CONSTANTS.DAY_MS);
-        
+
         // Format the timestamp based on the difference
         let formattedTime: string;
         if (minutes < 1) {
@@ -673,13 +679,13 @@ export default function HistoryScreen() {
                 day: 'numeric',
             });
         }
-        
+
         console.log(TAG, `Formatted timestamp ${timestamp} -> ${formattedTime}`);
         return formattedTime;
     };
 
     // Render Helpers
-    
+
     /**
      * Renders individual trip plans in the list
      * @param renderProps - FlatList render item props
@@ -687,7 +693,7 @@ export default function HistoryScreen() {
      */
     const renderTripPlanItem = ({ item, index }: RenderItemProps): React.ReactElement => {
         const imageUrl = getImageUrl(item);
-        
+
         console.log(TAG, `Rendering trip plan item ${index}:`, {
             id: item.id,
             title: item.title,
@@ -695,11 +701,11 @@ export default function HistoryScreen() {
             hasImage: !!imageUrl,
             imageUrl: imageUrl ? `${imageUrl.substring(0, 50)}...` : 'none'
         });
-        
+
         // Render the trip plan item with background image
         return (
-            <TouchableOpacity 
-                style={styles.tripPlanItem}
+            <TouchableOpacity
+                style={[styles.tripPlanItem, { backgroundColor: cardBackground }]}
                 onPress={() => handleTripPlanPress(item)}
                 activeOpacity={0.7}
                 accessibilityRole="button"
@@ -738,28 +744,28 @@ export default function HistoryScreen() {
                                         {formatTimestamp(item.lastUpdated)}
                                     </Text>
                                 </View>
-                                
+
                                 {/* Item Footer: Location and Delete Button */}
                                 <View style={styles.tripPlanFooter}>
                                     <View style={styles.locationCount}>
-                                        <MapPin 
-                                            size={ICON_SIZES.sm} 
-                                            color={COLORS.white} 
+                                        <MapPin
+                                            size={ICON_SIZES.sm}
+                                            color={COLORS.white}
                                         />
                                         <Text style={[styles.locationCountText, styles.locationCountTextWithImage]}>
                                             {item.location}
                                         </Text>
                                     </View>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.deleteButton}
                                         onPress={() => handleDeleteTripPlan(item.id)}
                                         hitSlop={LAYOUT.hitSlop}
                                         accessibilityRole="button"
                                         accessibilityLabel="Delete trip plan"
                                     >
-                                        <Trash2 
-                                            size={ICON_SIZES.md} 
-                                            color={COLORS.white} 
+                                        <Trash2
+                                            size={ICON_SIZES.md}
+                                            color={COLORS.white}
                                         />
                                     </TouchableOpacity>
                                 </View>
@@ -771,35 +777,35 @@ export default function HistoryScreen() {
                     <View style={styles.tripPlanContent}>
                         {/* Trip Plan Header: Title and timestamp */}
                         <View style={styles.tripPlanHeader}>
-                            <Text style={styles.tripPlanTitle} numberOfLines={2}>
+                            <ThemedText style={styles.tripPlanTitle} numberOfLines={2}>
                                 {item.title}
-                            </Text>
-                            <Text style={styles.timestamp}>
+                            </ThemedText>
+                            <ThemedText style={[styles.timestamp, { color: mutedTextColor }]}>
                                 {formatTimestamp(item.lastUpdated)}
-                            </Text>
+                            </ThemedText>
                         </View>
-                        
+
                         {/* Item Footer: Location and Delete Button */}
                         <View style={styles.tripPlanFooter}>
                             <View style={styles.locationCount}>
-                                <MapPin 
-                                    size={ICON_SIZES.sm} 
-                                    color={COLORS.lightText} 
+                                <MapPin
+                                    size={ICON_SIZES.sm}
+                                    color={mutedTextColor}
                                 />
-                                <Text style={styles.locationCountText}>
+                                <ThemedText style={[styles.locationCountText, { color: mutedTextColor }]}>
                                     {item.location}
-                                </Text>
+                                </ThemedText>
                             </View>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.deleteButton}
                                 onPress={() => handleDeleteTripPlan(item.id)}
                                 hitSlop={LAYOUT.hitSlop}
                                 accessibilityRole="button"
                                 accessibilityLabel="Delete trip plan"
                             >
-                                <Trash2 
-                                    size={ICON_SIZES.md} 
-                                    color={COLORS.lightText} 
+                                <Trash2
+                                    size={ICON_SIZES.md}
+                                    color={mutedTextColor}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -815,19 +821,19 @@ export default function HistoryScreen() {
      */
     const renderEmptyState = (): React.ReactElement => {
         console.log(TAG, 'Rendering empty state');
-        
+
         return (
             <View style={styles.emptyState}>
-                <Leaf 
-                    size={96} 
-                    color={COLORS.lightText} 
+                <Leaf
+                    size={96}
+                    color={mutedTextColor}
                 />
-                <Text style={styles.emptyTitle}>No Adventure Plans Yet</Text>
-                <Text style={styles.emptyText}>
+                <ThemedText style={styles.emptyTitle}>No Adventure Plans Yet</ThemedText>
+                <ThemedText style={[styles.emptyText, { color: mutedTextColor }]}>
                     Start planning and your PlanITs will appear here!
-                </Text>
+                </ThemedText>
                 {/* Start Exploring Button */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.startButton}
                     onPress={handleStartExploring}
                     accessibilityRole="button"
@@ -845,19 +851,19 @@ export default function HistoryScreen() {
      */
     const renderHeader = (): React.ReactElement => {
         console.log(TAG, 'Rendering header with', tripPlanHistory.length, 'trip plans');
-        
+
         // Format last update time for display
-        const lastUpdateText = lastUpdateTime > 0 
+        const lastUpdateText = lastUpdateTime > 0
             ? `Updated ${formatTimestamp(new Date(lastUpdateTime).toISOString())}`
             : '';
-        
+
         return (
-            <View style={styles.header}>
+            <View style={[styles.header, { backgroundColor: cardBackground, borderBottomColor: dividerColor }]}>
                 <ThemedText type="title" style={styles.headerTitle}>
                     Your PlanITs
                 </ThemedText>
                 <View style={styles.headerSubtitleContainer}>
-                    <ThemedText type="default" style={styles.headerSubtitle}>
+                    <ThemedText type="default" style={[styles.headerSubtitle, { color: mutedTextColor }]}>
                         {tripPlanHistory.length} trip plan{tripPlanHistory.length !== 1 ? 's' : ''}
                     </ThemedText>
                     {(cacheRefreshing || lastUpdateText) && (
@@ -935,15 +941,13 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    
+
     // Header
     header: {
         paddingHorizontal: LAYOUT.header.paddingHorizontal,
         paddingTop: LAYOUT.header.paddingTop,
         paddingBottom: LAYOUT.header.paddingBottom,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
-        backgroundColor: COLORS.white,
     },
     headerTitle: {
         fontSize: TYPOGRAPHY.fontSize.xxl,
@@ -957,14 +961,13 @@ const styles = StyleSheet.create({
     },
     headerSubtitle: {
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.lightText,
     },
     headerCacheStatus: {
         fontSize: TYPOGRAPHY.fontSize.sm,
         color: COLORS.primary,
         fontStyle: 'italic',
     },
-    
+
     // Trip Plan List
     tripPlanList: {
         flex: 1,
@@ -979,10 +982,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: LAYOUT.emptyState.paddingHorizontal,
     },
-    
+
     // Trip Plan Items
     tripPlanItem: {
-        backgroundColor: COLORS.white,
         borderRadius: LAYOUT.card.borderRadius,
         marginBottom: LAYOUT.card.marginBottom,
         minHeight: LAYOUT.card.height,
@@ -1014,7 +1016,6 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: TYPOGRAPHY.fontSize.base,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         marginRight: SPACING.sm + SPACING.xs, // 10
     },
     tripPlanTitleWithImage: {
@@ -1025,7 +1026,6 @@ const styles = StyleSheet.create({
     },
     timestamp: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.lightText,
         flexShrink: 0,
     },
     timestampWithImage: {
@@ -1045,7 +1045,6 @@ const styles = StyleSheet.create({
     },
     locationCountText: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.lightText,
         marginLeft: SPACING.xs,
     },
     locationCountTextWithImage: {
@@ -1060,7 +1059,7 @@ const styles = StyleSheet.create({
         padding: SPACING.xs,
         borderRadius: RADIUS.sm,
     },
-    
+
     // Empty State
     emptyState: {
         alignItems: 'center',
@@ -1069,13 +1068,11 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: TYPOGRAPHY.fontSize.lg,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         marginTop: SPACING.xl,
         marginBottom: SPACING.sm,
     },
     emptyText: {
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.lightText,
         textAlign: 'center',
         lineHeight: TYPOGRAPHY.lineHeight.relaxed,
         marginBottom: 30,

@@ -142,6 +142,20 @@ export const SHADOWS = {
 } as const;
 
 // ========================================
+// CHAT COLOR TOKENS
+// ========================================
+
+/**
+ * Chat-specific color tokens built on top of base colors.
+ */
+export const CHAT_COLORS = {
+    userBubble: COLORS.primary,
+    aiBubble: '#e9ecef',
+    userText: COLORS.white,
+    aiText: COLORS.text,
+} as const;
+
+// ========================================
 // LAYOUT CONFIGURATIONS
 // ========================================
 

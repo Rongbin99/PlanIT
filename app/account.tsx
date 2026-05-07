@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -45,18 +46,22 @@ export default function AccountScreen() {
     // ========================================
     // HOOKS & CONTEXT
     // ========================================
-    
+
     const { user, isAuthenticated, logout, updateProfile } = useAuth();
+    const textColor = useThemeColor('text');
+    const mutedTextColor = useThemeColor('mutedText');
+    const borderColor = useThemeColor('border');
+    const cardColor = useThemeColor('card');
 
     // ========================================
     // STATE MANAGEMENT
     // ========================================
-    
+
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    
+
     // Track original values to detect changes
     const [originalName, setOriginalName] = useState('');
     const [originalEmail, setOriginalEmail] = useState('');
@@ -77,7 +82,7 @@ export default function AccountScreen() {
         try {
             console.log(TAG, 'Loading account data');
             setIsLoading(true);
-            
+
             if (isAuthenticated && user) {
                 // Use data from auth context
                 const userName = user.name || '';
@@ -110,14 +115,14 @@ export default function AccountScreen() {
         try {
             console.log(TAG, 'Saving account data');
             setIsSaving(true);
-            
+
             if (isAuthenticated) {
                 // Use auth context to update profile
                 const success = await updateProfile({
                     name: name.trim(),
                     email: email.trim()
                 });
-                
+
                 if (success) {
                     console.log(TAG, 'Profile updated successfully');
                     // Update original values to reflect the saved state
@@ -133,7 +138,7 @@ export default function AccountScreen() {
                     name: name.trim(),
                     email: email.trim(),
                 };
-                
+
                 await AsyncStorage.setItem(ACCOUNT_DATA_KEY, JSON.stringify(accountData));
                 console.log(TAG, 'Account data saved locally');
                 // Update original values to reflect the saved state
@@ -141,7 +146,7 @@ export default function AccountScreen() {
                 setOriginalEmail(email.trim());
                 Alert.alert('Success', 'Your account information has been updated.');
             }
-            
+
         } catch (error) {
             console.error(TAG, 'Error saving account data:', error);
             Alert.alert('Error', 'Failed to save account information. Please try again.');
@@ -153,30 +158,30 @@ export default function AccountScreen() {
     // ========================================
     // COMPUTED VALUES
     // ========================================
-    
+
     // Check if any changes have been made
     const hasChanges = (name.trim() !== originalName) || (email.trim() !== originalEmail);
-    
+
     // Check if form is valid (name is required)
     const isFormValid = name.trim().length > 0;
-    
+
     // ========================================
     // EVENT HANDLERS
     // ========================================
 
     const handleSave = async () => {
         console.log(TAG, 'Save button pressed');
-        
+
         if (!isFormValid) {
             Alert.alert('Error', 'Please enter your name');
             return;
         }
-        
+
         if (!hasChanges) {
             Alert.alert('No Changes', 'No changes have been made to save.');
             return;
         }
-        
+
         await saveAccountData();
     };
 
@@ -192,7 +197,7 @@ export default function AccountScreen() {
 
     const handleLogout = () => {
         console.log(TAG, 'Logout button pressed');
-        
+
         Alert.alert(
             'Logout',
             'Are you sure you want to logout?',
@@ -207,20 +212,20 @@ export default function AccountScreen() {
                     onPress: async () => {
                         try {
                             console.log(TAG, 'User confirmed logout');
-                            
+
                             // Use auth context logout
                             await logout();
-                            
+
                             // Clear local data
                             await AsyncStorage.removeItem(ACCOUNT_DATA_KEY);
                             await AsyncStorage.removeItem('@planit_profile_image');
-                            
+
                             // Update local state
                             setName('');
                             setEmail('');
                             setOriginalName('');
                             setOriginalEmail('');
-                            
+
                         } catch (error) {
                             console.error(TAG, 'Error during logout:', error);
                             Alert.alert('Error', 'Failed to logout. Please try again.');
@@ -239,11 +244,11 @@ export default function AccountScreen() {
         return (
             <ThemedView style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <LoaderCircle 
-                        size={ICON_SIZES.xxl} 
-                        color={COLORS.primary} 
+                    <LoaderCircle
+                        size={ICON_SIZES.xxl}
+                        color={COLORS.primary}
                     />
-                    <ThemedText style={styles.loadingText}>Loading account data...</ThemedText>
+                    <ThemedText style={{ color: mutedTextColor }}>Loading account data...</ThemedText>
                 </View>
             </ThemedView>
         );
@@ -254,143 +259,143 @@ export default function AccountScreen() {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {isAuthenticated ? (
                     <>
-                            {/* Member Since */}
-                            <View style={styles.memberSinceContainer}>
-                                <ThemedText type="defaultSemiBold" style={styles.memberSinceText}>
-                                    Member since {user?.memberSince ? new Date(user.memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'}
-                                </ThemedText>
-                            </View>
+                        {/* Member Since */}
+                        <View style={styles.memberSinceContainer}>
+                            <ThemedText type="defaultSemiBold" style={[styles.memberSinceText, { color: mutedTextColor }]}>
+                                Member since {user?.memberSince ? new Date(user.memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'}
+                            </ThemedText>
+                        </View>
 
-                            {/* Name */}
-                            <View style={styles.inputGroup}>
-                                <ThemedText type="defaultSemiBold" style={styles.inputLabel}>
-                                    Name
-                                </ThemedText>
-                                <View style={styles.inputContainer}>
-                                    <IdCardLanyard 
-                                        size={ICON_SIZES.lg} 
-                                        color={COLORS.lightText} 
-                                        style={styles.inputIcon}
-                                    />
-                                    <TextInput
-                                        style={styles.textInput}
-                                        value={name}
-                                        onChangeText={setName}
-                                        placeholder="Enter your full name"
-                                        placeholderTextColor={COLORS.lightText}
-                                        autoCapitalize="words"
-                                        autoComplete="name"
-                                        editable={!isSaving}
-                                    />
-                                </View>
-                            </View>
-
-                            {/* Email */}
-                            <View style={styles.inputGroup}>
-                                <ThemedText type="defaultSemiBold" style={styles.inputLabel}>
-                                    Email
-                                </ThemedText>
-                                <View style={styles.inputContainer}>
-                                    <Mail 
-                                        size={ICON_SIZES.lg} 
-                                        color={COLORS.lightText} 
-                                        style={styles.inputIcon}
-                                    />
-                                    <TextInput
-                                        style={styles.textInput}
-                                        value={email}
-                                        onChangeText={setEmail}
-                                        placeholder="Enter your email address"
-                                        placeholderTextColor={COLORS.lightText}
-                                        autoCapitalize="none"
-                                        keyboardType="email-address"
-                                        autoComplete="email"
-                                        editable={!isSaving}
-                                    />
-                                </View>
-                            </View>
-
-                            {/* Save Button */}
-                            <TouchableOpacity
-                                style={[
-                                    styles.saveButton,
-                                    (isSaving || !isFormValid || !hasChanges) && styles.buttonDisabled
-                                ]}
-                                onPress={handleSave}
-                                disabled={isSaving || !isFormValid || !hasChanges}
-                                accessibilityLabel="Save account information"
-                                accessibilityRole="button"
-                            >
-                                {isSaving ? <LoaderCircle size={ICON_SIZES.lg} color={COLORS.white} /> : <Save size={ICON_SIZES.lg} color={COLORS.white} />}
-                                <Text style={styles.buttonText}>
-                                    {isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes'}
-                                </Text>
-                            </TouchableOpacity>
-
-                            {/* Logout Button */}
-                            <TouchableOpacity
-                                style={styles.logoutButton}
-                                onPress={handleLogout}
-                                accessibilityLabel="Logout from account"
-                                accessibilityRole="button"
-                            >
-                                <LogOut
+                        {/* Name */}
+                        <View style={styles.inputGroup}>
+                            <ThemedText type="defaultSemiBold" style={[styles.inputLabel, { color: textColor }]}>
+                                Name
+                            </ThemedText>
+                            <View style={[styles.inputContainer, { borderColor, backgroundColor: cardColor }]}>
+                                <IdCardLanyard
                                     size={ICON_SIZES.lg}
-                                    color={COLORS.white}
+                                    color={mutedTextColor}
+                                    style={styles.inputIcon}
                                 />
-                                <Text style={styles.logoutButtonText}>
-                                    Logout
-                                </Text>
-                            </TouchableOpacity>
+                                <TextInput
+                                    style={[styles.textInput, { color: textColor }]}
+                                    value={name}
+                                    onChangeText={setName}
+                                    placeholder="Enter your full name"
+                                    placeholderTextColor={mutedTextColor}
+                                    autoCapitalize="words"
+                                    autoComplete="name"
+                                    editable={!isSaving}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Email */}
+                        <View style={styles.inputGroup}>
+                            <ThemedText type="defaultSemiBold" style={[styles.inputLabel, { color: textColor }]}>
+                                Email
+                            </ThemedText>
+                            <View style={[styles.inputContainer, { borderColor, backgroundColor: cardColor }]}>
+                                <Mail
+                                    size={ICON_SIZES.lg}
+                                    color={mutedTextColor}
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={[styles.textInput, { color: textColor }]}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    placeholder="Enter your email address"
+                                    placeholderTextColor={mutedTextColor}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    autoComplete="email"
+                                    editable={!isSaving}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Save Button */}
+                        <TouchableOpacity
+                            style={[
+                                styles.saveButton,
+                                (isSaving || !isFormValid || !hasChanges) && [styles.buttonDisabled, { backgroundColor: mutedTextColor }]
+                            ]}
+                            onPress={handleSave}
+                            disabled={isSaving || !isFormValid || !hasChanges}
+                            accessibilityLabel="Save account information"
+                            accessibilityRole="button"
+                        >
+                            {isSaving ? <LoaderCircle size={ICON_SIZES.lg} color={COLORS.white} /> : <Save size={ICON_SIZES.lg} color={COLORS.white} />}
+                            <Text style={styles.buttonText}>
+                                {isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* Logout Button */}
+                        <TouchableOpacity
+                            style={styles.logoutButton}
+                            onPress={handleLogout}
+                            accessibilityLabel="Logout from account"
+                            accessibilityRole="button"
+                        >
+                            <LogOut
+                                size={ICON_SIZES.lg}
+                                color={COLORS.white}
+                            />
+                            <Text style={styles.logoutButtonText}>
+                                Logout
+                            </Text>
+                        </TouchableOpacity>
                     </>
                 ) : (
                     <>
-                            {/* Not Logged In State */}
-                            <View style={styles.authContainer}>
-                                <CircleUserRound 
-                                    size={80} 
-                                    color={COLORS.lightText} 
-                                    style={styles.authIcon}
+                        {/* Not Logged In State */}
+                        <View style={styles.authContainer}>
+                            <CircleUserRound
+                                size={80}
+                                color={mutedTextColor}
+                                style={styles.authIcon}
+                            />
+                            <ThemedText type="title" style={styles.authTitle}>
+                                Welcome to PlanIT
+                            </ThemedText>
+                            <ThemedText style={[styles.authSubtitle, { color: mutedTextColor }]}>
+                                Sign in to access your account and manage your plans
+                            </ThemedText>
+
+                            {/* Login Button */}
+                            <TouchableOpacity
+                                style={styles.loginButton}
+                                onPress={handleLogin}
+                                accessibilityLabel="Login to account"
+                                accessibilityRole="button"
+                            >
+                                <LogIn
+                                    size={ICON_SIZES.lg}
+                                    color={COLORS.white}
                                 />
-                                <ThemedText type="title" style={styles.authTitle}>
-                                    Welcome to PlanIT
-                                </ThemedText>
-                                <ThemedText style={styles.authSubtitle}>
-                                    Sign in to access your account and manage your plans
-                                </ThemedText>
+                                <Text style={styles.buttonText}>
+                                    Log In
+                                </Text>
+                            </TouchableOpacity>
 
-                                {/* Login Button */}
-                                <TouchableOpacity
-                                    style={styles.loginButton}
-                                    onPress={handleLogin}
-                                    accessibilityLabel="Login to account"
-                                    accessibilityRole="button"
-                                >
-                                    <LogIn
-                                        size={ICON_SIZES.lg}
-                                        color={COLORS.white}
-                                    />
-                                    <Text style={styles.buttonText}>
-                                        Log In
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Sign Up Button */}
-                                <TouchableOpacity
-                                    style={styles.signUpButton}
-                                    onPress={handleSignUp}
-                                    accessibilityLabel="Sign up for account"
-                                    accessibilityRole="button"
-                                >
-                                    <UserRoundPlus
-                                        size={ICON_SIZES.lg}
-                                        color={COLORS.primary}
-                                    />
-                                    <Text style={styles.signUpButtonText}>
-                                        Sign Up
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
+                            {/* Sign Up Button */}
+                            <TouchableOpacity
+                                style={[styles.signUpButton, { backgroundColor: cardColor, borderColor: COLORS.primary }]}
+                                onPress={handleSignUp}
+                                accessibilityLabel="Sign up for account"
+                                accessibilityRole="button"
+                            >
+                                <UserRoundPlus
+                                    size={ICON_SIZES.lg}
+                                    color={COLORS.primary}
+                                />
+                                <Text style={[styles.signUpButtonText, { color: COLORS.primary }]}>
+                                    Sign Up
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </>
                 )}
             </ScrollView>
@@ -412,9 +417,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.md,
     },
-    loadingText: {
-        color: COLORS.lightText,
-    },
     content: {
         flex: 1,
         padding: SPACING.xl,
@@ -424,15 +426,12 @@ const styles = StyleSheet.create({
     },
     inputLabel: {
         marginBottom: SPACING.sm,
-        color: COLORS.text,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: COLORS.border,
         borderRadius: RADIUS.md,
-        backgroundColor: COLORS.white,
         ...SHADOWS.card,
     },
     inputIcon: {
@@ -443,7 +442,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.lg,
         paddingVertical: SPACING.md,
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.text,
     },
     saveButton: {
         flexDirection: 'row',
@@ -488,7 +486,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     memberSinceText: {
-        color: COLORS.lightText,
         fontSize: TYPOGRAPHY.fontSize.sm,
     },
     authContainer: {
@@ -507,7 +504,6 @@ const styles = StyleSheet.create({
     },
     authSubtitle: {
         textAlign: 'center',
-        color: COLORS.lightText,
         fontSize: TYPOGRAPHY.fontSize.base,
     },
     loginButton: {
@@ -525,7 +521,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: COLORS.white,
         paddingVertical: SPACING.lg,
         paddingHorizontal: SPACING.xl,
         borderRadius: RADIUS.md,

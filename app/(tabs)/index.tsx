@@ -16,10 +16,14 @@ import { Animated, StyleSheet, TextInput, TouchableOpacity, View, Text, ScrollVi
 import { router, useFocusEffect } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ArrowLeft, LoaderCircle, LocateFixed, LocateOff, Send } from 'lucide-react-native';
-import MapView from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import ActionSheet, { SheetManager } from 'react-native-actions-sheet';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, ICON_SIZES, SHADOWS } from '@/constants/DesignTokens';
+import { useEffectiveTheme } from '@/contexts/ThemeContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { GOOGLE_MAP_DARK_STYLE } from '@/constants/GoogleMapStyles';
+import { getDefaultMapProvider, getMapProvider, MapProviderType, shouldUseDarkGoogleMap } from '@/constants/MapProvider';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -76,14 +80,14 @@ const HOME_SPACING = {
     contentPadding: SPACING.xl,
     sectionMargin: SPACING.md,
     optionPaddingVertical: SPACING.sm,
-    textMarginLeft: SPACING.md,
+    textMarginLeft: SPACING.sm,
     subSectionMarginTop: SPACING.sm,
     subSectionMarginLeft: SPACING.xl,
     subSectionPaddingLeft: SPACING.lg,
 } as const;
 
 // Layout constants
-const DROPDOWN_HEIGHT_PERCENTAGE = Platform.OS === 'android' ? 0.80 : 0.70;
+const DROPDOWN_HEIGHT_PERCENTAGE = Platform.OS === 'android' ? 0.70 : 0.75;
 const DROPDOWN_HEIGHT = SCREEN_HEIGHT * DROPDOWN_HEIGHT_PERCENTAGE;
 const BORDER_WIDTH = 3;
 
@@ -145,18 +149,29 @@ interface SearchData {
 // MAIN COMPONENT
 // ========================================
 export default function HomeScreen() {
+    const effectiveTheme = useEffectiveTheme();
+    const [mapProvider, setMapProvider] = useState<MapProviderType>(getDefaultMapProvider());
+    const useDarkGoogleMap = shouldUseDarkGoogleMap(mapProvider, effectiveTheme);
+
+    // Theme-aware colors
+    const cardColor = useThemeColor('card');
+    const borderColor = useThemeColor('border');
+    const textColor = useThemeColor('text');
+    const mutedTextColor = useThemeColor('mutedText');
+    const backgroundColor = useThemeColor('background');
+
     // ========================================
     // STATE MANAGEMENT
     // ========================================
-    
+
     // Animation states
     const glowAnim = useRef(new Animated.Value(0)).current;
     const placeholderAnim = useRef(new Animated.Value(0)).current;
     const dropdownAnim = useRef(new Animated.Value(0)).current;
-    
+
     // Map reference for programmatic control
     const mapRef = useRef<MapView>(null);
-    
+
     // UI states
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
     const [displayedPlaceholder, setDisplayedPlaceholder] = useState<string>(SEARCH_PLACEHOLDER_OPTIONS[0]);
@@ -165,7 +180,7 @@ export default function HomeScreen() {
     const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
-    
+
     // Location states
     const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
     const [locationPermission, setLocationPermission] = useState<Location.LocationPermissionResponse | null>(null);
@@ -195,14 +210,14 @@ export default function HomeScreen() {
     // ========================================
     // EFFECTS & ANIMATIONS
     // ========================================
-    
+
     /**
      * Continuous glow animation for search bar border
      * Creates an engaging visual effect that cycles through colors
      */
     useEffect(() => {
         console.log(TAG, 'Initializing glow animation');
-        
+
         const startGlowAnimation = () => {
             Animated.loop(
                 Animated.sequence([
@@ -244,12 +259,12 @@ export default function HomeScreen() {
                             do {
                                 next = Math.floor(Math.random() * SEARCH_PLACEHOLDER_OPTIONS.length);
                             } while (next === prev && SEARCH_PLACEHOLDER_OPTIONS.length > 1);
-                            
+
                             setDisplayedPlaceholder(SEARCH_PLACEHOLDER_OPTIONS[next]);
                             console.log(TAG, 'Random placeholder selected:', SEARCH_PLACEHOLDER_OPTIONS[next]);
                             return next;
                         });
-                        
+
                         // Animate in (slide down)
                         placeholderAnim.setValue(ANIMATIONS.placeholderOffset);
                         Animated.timing(placeholderAnim, {
@@ -273,7 +288,7 @@ export default function HomeScreen() {
      */
     useEffect(() => {
         console.log(TAG, 'Animating dropdown visibility:', isDropdownVisible);
-        
+
         Animated.timing(dropdownAnim, {
             toValue: isDropdownVisible ? 1 : 0,
             duration: ANIMATIONS.dropdownDuration,
@@ -287,16 +302,16 @@ export default function HomeScreen() {
      */
     useEffect(() => {
         console.log(TAG, 'Setting up location services');
-        
+
         const setupLocation = async () => {
             try {
                 setIsLocationLoading(true);
-                
+
                 // Request location permission
                 console.log(TAG, 'Requesting location permission');
                 const permission = await Location.requestForegroundPermissionsAsync();
                 setLocationPermission(permission);
-                
+
                 if (permission.status !== 'granted') {
                     console.warn(TAG, 'Location permission denied');
                     setIsLocationLoading(false);
@@ -313,16 +328,16 @@ export default function HomeScreen() {
                 const location = await Location.getCurrentPositionAsync({
                     accuracy: Location.Accuracy.Balanced,
                 });
-                
+
                 console.log(TAG, 'Location acquired:', {
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
                     accuracy: location.coords.accuracy,
                 });
-                
+
                 setUserLocation(location);
                 setHasUserLocation(true);
-                
+
                 // Update map region to user's location
                 const newRegion = {
                     latitude: location.coords.latitude,
@@ -330,16 +345,16 @@ export default function HomeScreen() {
                     latitudeDelta: MAP_CONFIG.LAT_DELTA,
                     longitudeDelta: MAP_CONFIG.LONG_DELTA,
                 };
-                
+
                 console.log(TAG, 'Updating map region to user location:', newRegion);
                 setMapRegion(newRegion);
-                
+
                 // Animate map to user's location
                 if (mapRef.current) {
                     console.log(TAG, 'Animating map to user location');
                     mapRef.current.animateToRegion(newRegion, MAP_ANIMATION_DURATION);
                 }
-                
+
             } catch (error) {
                 console.error(TAG, 'Location error:', error);
                 setHasUserLocation(false);
@@ -385,24 +400,43 @@ export default function HomeScreen() {
             setIsDropdownVisible(false);
             setIsActionSheetVisible(false);
             setIsSearchFocused(false);
+
+            let isMounted = true;
+            const syncMapProvider = async () => {
+                try {
+                    const provider = await getMapProvider();
+                    if (isMounted) {
+                        console.log(TAG, 'Active map provider:', provider);
+                        setMapProvider(provider);
+                    }
+                } catch (error) {
+                    console.error(TAG, 'Failed to load map provider:', error);
+                }
+            };
+
+            syncMapProvider();
+
+            return () => {
+                isMounted = false;
+            };
         }, [])
     );
 
     // ========================================
     // LOCATION & EVENT HANDLERS
     // ========================================
-    
+
     /**
      * Refreshes user location and updates map
      */
     const refreshLocation = async (): Promise<void> => {
         console.log(TAG, 'Refreshing user location');
-        
+
         if (!locationPermission || locationPermission.status !== 'granted') {
             console.warn(TAG, 'Location permission not granted, requesting again');
             const permission = await Location.requestForegroundPermissionsAsync();
             setLocationPermission(permission);
-            
+
             if (permission.status !== 'granted') {
                 Alert.alert(
                     'Permission Required',
@@ -416,35 +450,35 @@ export default function HomeScreen() {
         try {
             setIsLocationLoading(true);
             console.log(TAG, 'Getting updated location');
-            
+
             const location = await Location.getCurrentPositionAsync({
                 accuracy: Location.Accuracy.High,
             });
-            
+
             console.log(TAG, 'Location refreshed:', {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
                 accuracy: location.coords.accuracy,
             });
-            
+
             setUserLocation(location);
             setHasUserLocation(true);
-            
+
             const newRegion = {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
                 latitudeDelta: MAP_CONFIG.LAT_DELTA,
                 longitudeDelta: MAP_CONFIG.LONG_DELTA,
             };
-            
+
             setMapRegion(newRegion);
-            
+
             // Animate to new location
             if (mapRef.current) {
                 console.log(TAG, 'Animating map to refreshed location');
                 mapRef.current.animateToRegion(newRegion, MAP_ANIMATION_DURATION);
             }
-            
+
         } catch (error) {
             console.error(TAG, 'Error refreshing location:', error);
             Alert.alert(
@@ -517,7 +551,7 @@ export default function HomeScreen() {
         } else {
             // If Plan Food is off, show price selection action sheet
             console.log(TAG, 'Plan Food pressed, showing price selection action sheet');
-            
+
             setIsActionSheetVisible(true);
             SheetManager.show('price-selection-sheet');
         }
@@ -564,14 +598,14 @@ export default function HomeScreen() {
     // ========================================
     // DATA COLLECTION & NAVIGATION
     // ========================================
-    
+
     /**
      * Collects all filter data into a structured format for backend
      * @returns Formatted search data object
      */
     const collectFilterData = (): SearchData => {
         // Handle time of day logic - if allDay is selected, use only that, otherwise use specific times
-        const selectedTimeOfDay = timeOfDay.allDay 
+        const selectedTimeOfDay = timeOfDay.allDay
             ? ['allDay']
             : Object.keys(timeOfDay).filter(
                 key => key !== 'allDay' && timeOfDay[key as keyof TimeOfDay]
@@ -598,8 +632,8 @@ export default function HomeScreen() {
                 ...searchData.filters,
                 priceRange: searchData.filters.priceRange ? `${searchData.filters.priceRange} (${PRICE_RANGE_MAP[searchData.filters.priceRange]})` : undefined,
                 specialOptions: searchData.filters.specialOptions?.length
-                  ? searchData.filters.specialOptions.join(', ')
-                  : 'None selected'
+                    ? searchData.filters.specialOptions.join(', ')
+                    : 'None selected'
             }
         });
 
@@ -612,9 +646,9 @@ export default function HomeScreen() {
      */
     const handleSendToBackend = async (): Promise<void> => {
         console.log(TAG, 'Send button pressed, validating and collecting data');
-        
+
         const searchData = collectFilterData();
-        
+
         // Input validation
         if (!searchData.searchQuery) {
             console.warn(TAG, 'Validation failed: empty search query');
@@ -624,7 +658,7 @@ export default function HomeScreen() {
 
         try {
             console.log(TAG, 'Navigating to chat screen with search data');
-            
+
             // Navigate to chat screen with search data
             router.push({
                 pathname: '/chat' as any,
@@ -634,7 +668,7 @@ export default function HomeScreen() {
             });
 
             console.log(TAG, 'Navigation successful, resetting form');
-            
+
             // Reset form after successful navigation
             resetSearchForm();
         } catch (error) {
@@ -646,17 +680,17 @@ export default function HomeScreen() {
     // ========================================
     // UI HELPERS
     // ========================================
-    
+
     /**
      * Renders checkbox icon based on checked state
      * @param isChecked - Whether the checkbox is checked
      * @returns JSX element for checkbox icon
      */
     const renderCheckbox = (isChecked: boolean): React.ReactElement => (
-        <MaterialCommunityIcons 
-            name={isChecked ? "checkbox-marked" : "checkbox-blank-outline"} 
-            size={HOME_ICON_SIZES.checkbox} 
-            color={isChecked ? COLORS.primary : HOME_COLORS.placeholder} 
+        <MaterialCommunityIcons
+            name={isChecked ? "checkbox-marked" : "checkbox-blank-outline"}
+            size={HOME_ICON_SIZES.checkbox}
+            color={isChecked ? COLORS.primary : mutedTextColor}
         />
     );
 
@@ -668,13 +702,13 @@ export default function HomeScreen() {
      * @returns JSX element for highlighted button
      */
     const renderHighlightButton = (isSelected: boolean, text: string, icon: string): React.ReactElement => (
-        <View style={[styles.highlightButton, isSelected && styles.highlightButtonSelected]}>
-            <MaterialCommunityIcons 
-                name={isSelected ? "check" : icon as any} 
-                size={HOME_ICON_SIZES.radio} 
-                color={isSelected ? COLORS.white : HOME_COLORS.placeholder} 
+        <View style={[styles.highlightButton, { borderColor }, isSelected && styles.highlightButtonSelected]}>
+            <MaterialCommunityIcons
+                name={isSelected ? "check" : icon as any}
+                size={HOME_ICON_SIZES.radio}
+                color={isSelected ? COLORS.white : mutedTextColor}
             />
-            <Text style={[styles.highlightButtonText, isSelected && styles.highlightButtonTextSelected]}>
+            <Text style={[styles.highlightButtonText, { color: textColor }, isSelected && styles.highlightButtonTextSelected]}>
                 {text}
             </Text>
         </View>
@@ -686,17 +720,17 @@ export default function HomeScreen() {
      * @returns JSX element for toggle icon
      */
     const renderToggle = (isOn: boolean): React.ReactElement => (
-        <MaterialCommunityIcons 
-            name={isOn ? "toggle-switch" : "toggle-switch-off"} 
-            size={HOME_ICON_SIZES.toggle} 
-            color={isOn ? COLORS.primary : HOME_COLORS.placeholder} 
+        <MaterialCommunityIcons
+            name={isOn ? "toggle-switch" : "toggle-switch-off"}
+            size={HOME_ICON_SIZES.toggle}
+            color={isOn ? COLORS.primary : mutedTextColor}
         />
     );
 
     // ========================================
     // DYNAMIC STYLES
     // ========================================
-    
+
     /**
      * Dynamic glow style for search bar border
      */
@@ -711,50 +745,50 @@ export default function HomeScreen() {
     /**
      * Determines send button color based on input state
      */
-    const sendButtonColor = isLoading 
-        ? HOME_COLORS.loading 
-        : (inputValue.trim() ? COLORS.primary : HOME_COLORS.placeholder);
+    const sendButtonColor = isLoading
+        ? HOME_COLORS.loading
+        : (inputValue.trim() ? COLORS.primary : mutedTextColor);
 
     // ========================================
     // RENDER
     // ========================================
-    
+
     return (
         <View style={styles.container}>
             {/* Search Container */}
             <View style={styles.searchContainer}>
                 {/* Search Input with Glow Effect */}
-                <Animated.View style={[styles.searchInputContainer, glowStyle]}>
+                <Animated.View style={[styles.searchInputContainer, { backgroundColor: cardColor }, glowStyle]}>
                     <View style={styles.searchRow}>
                         {/* Back Arrow (Conditional) */}
                         {isDropdownVisible && (
-                            <TouchableOpacity 
-                                style={styles.iconButton} 
+                            <TouchableOpacity
+                                style={styles.iconButton}
                                 onPress={closeDropdown}
                                 accessibilityLabel="Close filters"
                             >
-                                <ArrowLeft 
-                                    size={HOME_ICON_SIZES.back} 
-                                    color={COLORS.secondary} 
+                                <ArrowLeft
+                                    size={HOME_ICON_SIZES.back}
+                                    color={mutedTextColor}
                                 />
                             </TouchableOpacity>
                         )}
 
                         {/* Search Input Area */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.searchInputArea}
                             onPress={handleSearchBoxPress}
                             activeOpacity={1}
                         >
                             <TextInput
-                                style={styles.searchInput}
+                                style={[styles.searchInput, { color: textColor }]}
                                 value={inputValue}
                                 onChangeText={(text) => {
                                     console.log(TAG, 'Search input changed:', text);
                                     setInputValue(text);
                                 }}
                                 placeholder=" "
-                                placeholderTextColor={HOME_COLORS.placeholder}
+                                placeholderTextColor={mutedTextColor}
                                 editable={!isLoading}
                                 onFocus={() => {
                                     console.log(TAG, 'Search input focused');
@@ -768,12 +802,13 @@ export default function HomeScreen() {
                                 returnKeyType="search"
                                 onSubmitEditing={handleSendToBackend}
                             />
-                            
+
                             {/* Animated Placeholder */}
                             {inputValue.length === 0 && !isSearchFocused && (
                                 <Animated.Text
                                     style={[
                                         styles.animatedPlaceholder,
+                                        { color: mutedTextColor },
                                         {
                                             transform: [{ translateY: placeholderAnim }],
                                             opacity: placeholderAnim.interpolate({
@@ -788,10 +823,10 @@ export default function HomeScreen() {
                                 </Animated.Text>
                             )}
                         </TouchableOpacity>
-                        
+
                         {/* Send Button */}
-                        <TouchableOpacity 
-                            style={styles.iconButton} 
+                        <TouchableOpacity
+                            style={styles.iconButton}
                             onPress={handleSendToBackend}
                             disabled={isLoading || !inputValue.trim()}
                             accessibilityLabel="Send search query"
@@ -802,9 +837,10 @@ export default function HomeScreen() {
                 </Animated.View>
 
                 {/* Dropdown Filter Menu */}
-                <Animated.View 
+                <Animated.View
                     style={[
                         styles.dropdown,
+                        { backgroundColor: cardColor, borderColor },
                         {
                             height: dropdownAnim.interpolate({
                                 inputRange: [0, 1],
@@ -814,34 +850,34 @@ export default function HomeScreen() {
                         }
                     ]}
                 >
-                    <ScrollView 
-                        style={styles.dropdownContent} 
+                    <ScrollView
+                        style={styles.dropdownContent}
                         showsVerticalScrollIndicator={false}
                     >
                         {/* Time of Day Section */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterTitle}>Time of Day</Text>
-                            
+                            <Text style={[styles.filterTitle, { color: textColor }]}>Time of Day</Text>
+
                             {/* All Day Toggle */}
-                            <TouchableOpacity 
-                                style={styles.filterOption} 
+                            <TouchableOpacity
+                                style={styles.filterOption}
                                 onPress={() => toggleTimeOfDay('allDay')}
                             >
                                 {renderToggle(timeOfDay.allDay)}
-                                <Text style={styles.filterText}>All Day</Text>
+                                <Text style={[styles.filterText, { color: textColor }]}>All Day</Text>
                             </TouchableOpacity>
-                            
+
                             {/* Specific Time Options */}
                             <View style={styles.threeColumnContainer}>
                                 {(['morning', 'afternoon', 'evening'] as const).map((time) => (
                                     <View key={time} style={styles.columnItem}>
-                                        <TouchableOpacity 
-                                            style={timeOfDay.allDay ? styles.filterOptionDisabled : styles.filterOption} 
+                                        <TouchableOpacity
+                                            style={timeOfDay.allDay ? styles.filterOptionDisabled : styles.filterOption}
                                             onPress={() => !timeOfDay.allDay && toggleTimeOfDay(time)}
                                             disabled={timeOfDay.allDay}
                                         >
                                             {renderCheckbox(timeOfDay[time])}
-                                            <Text style={timeOfDay.allDay ? styles.filterTextDisabled : styles.filterText}>
+                                            <Text style={[styles.filterText, { color: timeOfDay.allDay ? mutedTextColor : textColor }]}>
                                                 {time.charAt(0).toUpperCase() + time.slice(1)}
                                             </Text>
                                         </TouchableOpacity>
@@ -852,7 +888,7 @@ export default function HomeScreen() {
 
                         {/* Environment Section */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterTitle}>Environment</Text>
+                            <Text style={[styles.filterTitle, { color: textColor }]}>Environment</Text>
                             <View style={styles.threeColumnContainer}>
                                 {(['indoor', 'outdoor', 'mixed'] as const).map((env) => {
                                     // Define specific icons for each environment
@@ -864,11 +900,11 @@ export default function HomeScreen() {
                                             default: return 'radiobox-blank';
                                         }
                                     };
-                                    
+
                                     return (
                                         <View key={env} style={styles.columnItem}>
-                                            <TouchableOpacity 
-                                                style={styles.filterOption} 
+                                            <TouchableOpacity
+                                                style={styles.filterOption}
                                                 onPress={() => {
                                                     console.log(TAG, 'Environment changed to:', env);
                                                     setEnvironment(env);
@@ -884,27 +920,27 @@ export default function HomeScreen() {
 
                         {/* Plan Options Section - Side by Side */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterTitle}>Planning Options</Text>
+                            <Text style={[styles.filterTitle, { color: textColor }]}>Planning Options</Text>
                             <View style={styles.sideBySideContainer}>
                                 <View style={styles.toggleContainer}>
-                                    <TouchableOpacity 
-                                        style={styles.filterOption} 
+                                    <TouchableOpacity
+                                        style={styles.filterOption}
                                         onPress={() => {
                                             console.log(TAG, 'Plan Transit toggled to:', !planTransit);
                                             setPlanTransit(!planTransit);
                                         }}
                                     >
                                         {renderToggle(planTransit)}
-                                        <Text style={styles.filterText}>Plan Transit</Text>
+                                        <Text style={[styles.filterText, { color: textColor }]}>Plan Transit</Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.toggleContainer}>
-                                    <TouchableOpacity 
-                                        style={styles.filterOption} 
+                                    <TouchableOpacity
+                                        style={styles.filterOption}
                                         onPress={handlePlanFoodPress}
                                     >
                                         {renderToggle(planFood)}
-                                        <Text style={styles.filterText}>
+                                        <Text style={[styles.filterText, { color: textColor }]}>
                                             Plan Food {planFood ? `(${PRICE_RANGE_MAP[priceRange]})` : ''}
                                         </Text>
                                     </TouchableOpacity>
@@ -914,7 +950,7 @@ export default function HomeScreen() {
 
                         {/* Group Size Section */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterTitle}>Group Size</Text>
+                            <Text style={[styles.filterTitle, { color: textColor }]}>Group Size</Text>
                             <View style={styles.threeColumnContainer}>
                                 {(['solo', 'duo', 'group'] as const).map((size) => {
                                     // Define specific icons for each group size
@@ -926,11 +962,11 @@ export default function HomeScreen() {
                                             default: return 'radiobox-blank';
                                         }
                                     };
-                                    
+
                                     return (
                                         <View key={size} style={styles.columnItem}>
-                                            <TouchableOpacity 
-                                                style={styles.filterOption} 
+                                            <TouchableOpacity
+                                                style={styles.filterOption}
                                                 onPress={() => {
                                                     console.log(TAG, 'Group size changed to:', size);
                                                     setGroupSize(size);
@@ -946,12 +982,12 @@ export default function HomeScreen() {
 
                         {/* Special Options Section */}
                         <View style={styles.filterSection}>
-                            <Text style={styles.filterTitle}>Special Options</Text>
+                            <Text style={[styles.filterTitle, { color: textColor }]}>Special Options</Text>
                             <View style={styles.threeColumnContainer}>
                                 {(['casual', 'adventure', 'tourist', 'wander', 'date', 'family'] as const).map((option) => (
                                     <View key={option} style={styles.columnItem}>
-                                        <TouchableOpacity 
-                                            style={styles.filterOption} 
+                                        <TouchableOpacity
+                                            style={styles.filterOption}
                                             onPress={() => {
                                                 setSpecialOptions(prev =>
                                                     prev.includes(option)
@@ -961,7 +997,7 @@ export default function HomeScreen() {
                                             }}
                                         >
                                             {renderCheckbox(specialOptions.includes(option))}
-                                            <Text style={styles.filterText}>{option.charAt(0).toUpperCase() + option.slice(1)}</Text>
+                                            <Text style={[styles.filterText, { color: textColor }]}>{option.charAt(0).toUpperCase() + option.slice(1)}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ))}
@@ -970,11 +1006,13 @@ export default function HomeScreen() {
                     </ScrollView>
                 </Animated.View>
             </View>
-            
+
             {/* Map View */}
             <MapView
                 ref={mapRef}
                 style={styles.map}
+                provider={mapProvider === 'google' ? PROVIDER_GOOGLE : undefined}
+                customMapStyle={useDarkGoogleMap ? GOOGLE_MAP_DARK_STYLE : undefined}
                 initialRegion={{
                     latitude: MAP_CONFIG.DEFAULT_REGION.latitude,
                     longitude: MAP_CONFIG.DEFAULT_REGION.longitude,
@@ -989,45 +1027,49 @@ export default function HomeScreen() {
                     console.log(TAG, 'Map region changed:', region);
                 }}
             />
-            
+
             {/* Location Controls */}
             <View style={styles.locationControls}>
-                <TouchableOpacity 
-                    style={[styles.locationButton, isLocationLoading && styles.locationButtonLoading]}
+                <TouchableOpacity
+                    style={[styles.locationButton, { backgroundColor: cardColor, borderColor }, isLocationLoading && styles.locationButtonLoading]}
                     onPress={refreshLocation}
                     disabled={isLocationLoading}
                     accessibilityLabel="Refresh location"
                     accessibilityRole="button"
                 >
                     {isLocationLoading ? (
-                        <ActivityIndicator 
-                            size="large" 
-                            color={COLORS.primary} 
+                        <ActivityIndicator
+                            size="large"
+                            color={COLORS.primary}
                         />
                     ) : (
-                        hasUserLocation ? <LocateFixed size={HOME_ICON_SIZES.filter} color={COLORS.primary} /> : <LocateOff size={HOME_ICON_SIZES.filter} color={COLORS.secondary} />
+                        hasUserLocation ? <LocateFixed size={HOME_ICON_SIZES.filter} color={COLORS.primary} /> : <LocateOff size={HOME_ICON_SIZES.filter} color={mutedTextColor} />
                     )}
                 </TouchableOpacity>
             </View>
 
             {/* Price Selection Action Sheet */}
-            <ActionSheet id="price-selection-sheet" gestureEnabled={true}>
-                <View style={styles.actionSheetContainer}>                    
+            <ActionSheet
+                id="price-selection-sheet"
+                containerStyle={{ backgroundColor: cardColor }}
+                indicatorStyle={{ backgroundColor: borderColor }}
+            >
+                <View style={[styles.actionSheetContainer, { backgroundColor: cardColor }]}>
                     <FlatList
                         data={PRICE_RANGE_VALUES}
                         keyExtractor={(item) => item.toString()}
                         renderItem={({ item }) => (
                             <TouchableOpacity
-                                style={styles.priceOptionItem}
+                                style={[styles.priceOptionItem, { backgroundColor, borderColor }]}
                                 onPress={() => {
                                     handlePriceSelection(item);
                                 }}
                             >
-                                <Text style={styles.priceOptionText}>{PRICE_RANGE_MAP[item]}</Text>
-                                <Text style={styles.priceDescription}>
-                                    {item === 1 ? 'Budget ($10-$20)' : 
-                                     item === 2 ? 'Moderate ($20-$30)' : 
-                                     item === 3 ? 'Premium ($30-$50)' : 'Luxury ($50+)'}
+                                <Text style={[styles.priceOptionText, { color: textColor }]}>{PRICE_RANGE_MAP[item]}</Text>
+                                <Text style={[styles.priceDescription, { color: mutedTextColor }]}>
+                                    {item === 1 ? 'Budget ($10-$20)' :
+                                        item === 2 ? 'Moderate ($20-$30)' :
+                                            item === 3 ? 'Premium ($30-$50)' : 'Luxury ($50+)'}
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -1052,7 +1094,7 @@ const styles = StyleSheet.create({
     map: {
         flex: 1,
     },
-    
+
     // Search Container
     searchContainer: {
         position: 'absolute',
@@ -1062,7 +1104,6 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     searchInputContainer: {
-        backgroundColor: COLORS.white,
         borderRadius: HOME_SPACING.borderRadius,
     },
     searchRow: {
@@ -1070,7 +1111,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginEnd: HOME_SPACING.iconPadding,
     },
-    
+
     // Search Input
     searchInputArea: {
         flex: 1,
@@ -1090,27 +1131,24 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 25,
         right: 0,
-        color: HOME_COLORS.placeholder,
         fontSize: TYPOGRAPHY.fontSize.sm,
         top: Platform.OS === 'ios' ? -7.5 : -10,
     },
-    
+
     // Buttons
     iconButton: {
         paddingHorizontal: HOME_SPACING.iconPadding,
         paddingVertical: HOME_SPACING.iconPadding,
     },
-    
+
     // Dropdown
     dropdown: {
-        backgroundColor: COLORS.white,
         borderRadius: HOME_SPACING.dropdownRadius,
         marginTop: HOME_SPACING.dropdownMarginTop,
         ...SHADOWS.card,
         overflow: 'hidden',
         // Enhanced modal-like appearance
         borderWidth: 1,
-        borderColor: COLORS.border,
         // Stronger shadow for more prominence
         shadowColor: '#000',
         shadowOffset: {
@@ -1127,7 +1165,7 @@ const styles = StyleSheet.create({
     dropdownScrollContent: {
         paddingBottom: HOME_SPACING.contentPadding,
     },
-    
+
     // Filter Sections
     filterSection: {
         marginBottom: HOME_SPACING.sectionMargin,
@@ -1136,7 +1174,6 @@ const styles = StyleSheet.create({
         fontSize: TYPOGRAPHY.fontSize.lg,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
         marginBottom: SPACING.sm,
-        color: COLORS.text,
     },
     filterOption: {
         flexDirection: 'row',
@@ -1152,14 +1189,8 @@ const styles = StyleSheet.create({
     filterText: {
         marginLeft: HOME_SPACING.textMarginLeft,
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.text,
     },
-    filterTextDisabled: {
-        marginLeft: HOME_SPACING.textMarginLeft,
-        fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.lightText,
-    },
-    
+
     // Sub-sections
     subSection: {
         marginTop: HOME_SPACING.subSectionMarginTop,
@@ -1174,7 +1205,7 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.sm,
         color: HOME_COLORS.subText,
     },
-    
+
     // Location Controls
     locationControls: {
         position: 'absolute',
@@ -1184,7 +1215,6 @@ const styles = StyleSheet.create({
         zIndex: 5,
     },
     locationButton: {
-        backgroundColor: COLORS.white,
         borderRadius: 30,
         width: 60,
         height: 60,
@@ -1192,12 +1222,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         ...SHADOWS.button,
         borderWidth: 1,
-        borderColor: COLORS.border,
     },
     locationButtonLoading: {
         opacity: 0.7,
     },
-    
+
     // 3-Column Layout
     threeColumnContainer: {
         flexDirection: 'row',
@@ -1209,7 +1238,7 @@ const styles = StyleSheet.create({
         width: '30%',
         marginBottom: SPACING.sm,
     },
-    
+
     // Side-by-side toggles
     sideBySideContainer: {
         flexDirection: 'row',
@@ -1224,19 +1253,11 @@ const styles = StyleSheet.create({
 
     // Price Selection Action Sheet
     actionSheetContainer: {
-        backgroundColor: COLORS.white,
         paddingTop: SPACING.md,
         paddingHorizontal: SPACING.xl,
         paddingBottom: SPACING.xxl,
         borderTopLeftRadius: RADIUS.xl,
         borderTopRightRadius: RADIUS.xl,
-    },
-    actionSheetTitle: {
-        fontSize: TYPOGRAPHY.fontSize.xl,
-        fontWeight: TYPOGRAPHY.fontWeight.bold,
-        marginBottom: SPACING.lg,
-        color: COLORS.text,
-        textAlign: 'center',
     },
     priceOptionItem: {
         flexDirection: 'row',
@@ -1245,25 +1266,20 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.lg,
         paddingHorizontal: SPACING.md,
         marginVertical: SPACING.xs,
-        backgroundColor: COLORS.background,
         borderRadius: RADIUS.md,
         borderWidth: 1,
-        borderColor: COLORS.border,
     },
     priceOptionText: {
         fontSize: TYPOGRAPHY.fontSize.xl,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
-        color: COLORS.text,
     },
     priceDescription: {
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.lightText,
         fontWeight: TYPOGRAPHY.fontWeight.medium,
     },
     highlightButton: {
         padding: SPACING.sm,
         borderWidth: 1,
-        borderColor: COLORS.border,
         borderRadius: RADIUS.md,
         width: '100%',
         flexDirection: 'row',
@@ -1273,11 +1289,11 @@ const styles = StyleSheet.create({
     },
     highlightButtonSelected: {
         backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
     },
     highlightButtonText: {
         fontSize: TYPOGRAPHY.fontSize.base,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
-        color: COLORS.text,
     },
     highlightButtonTextSelected: {
         color: COLORS.white,

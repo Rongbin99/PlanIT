@@ -17,17 +17,21 @@
 // IMPORTS
 // ========================================
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated, ActivityIndicator, TouchableOpacity, Alert, Linking, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Star, Tag, Clock, Globe, Phone, MapPin, Route, Lightbulb, RotateCw, Search, Hourglass, ExternalLink, ChevronLeft, MapPinned, Footprints, TrainFrontTunnel, BusFront, TramFront, TrainFront, Ship, Info, X } from 'lucide-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { FlashList } from '@shopify/flash-list';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { API_URLS, DEFAULT_HEADERS } from '@/constants/ApiConfig';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ICON_SIZES } from '@/constants/DesignTokens';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ICON_SIZES, CHAT_COLORS } from '@/constants/DesignTokens';
+import { Colors as APP_COLORS } from '@/constants/Colors';
 import { saveChatToLocalStorage as saveToStorage, StoredChatData, getChatsFromLocalStorage } from '@/constants/StorageUtils';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMapProvider } from '@/constants/MapProvider';
+import { getDefaultMapProvider, getMapProvider, MapProviderType, shouldUseDarkGoogleMap } from '@/constants/MapProvider';
+import { useEffectiveTheme } from '@/contexts/ThemeContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { GOOGLE_MAP_DARK_STYLE } from '@/constants/GoogleMapStyles';
 
 // ========================================
 // TYPE DEFINITIONS
@@ -147,16 +151,6 @@ const FALLBACK_COORDINATES = {
 }
 
 /**
- * Chat-specific constants not in design tokens
- */
-const CHAT_COLORS = {
-    userBubble: COLORS.primary,
-    aiBubble: '#e9ecef',
-    userText: COLORS.white,
-    aiText: COLORS.text,
-} as const;
-
-/**
  * Animation configuration
  */
 const ANIMATION_CONFIG = {
@@ -191,6 +185,19 @@ const PRICE_RANGE_MAP = {
 // MAIN COMPONENT
 // ========================================
 export default function ChatScreen() {
+    const effectiveTheme = useEffectiveTheme();
+    const [mapProvider, setMapProvider] = useState<MapProviderType>(getDefaultMapProvider());
+    const useDarkGoogleMap = shouldUseDarkGoogleMap(mapProvider, effectiveTheme);
+    const backgroundColor = useThemeColor('background');
+    const cardColor = useThemeColor('card');
+    const borderColor = useThemeColor('border');
+    const textColor = useThemeColor('text');
+    const mutedTextColor = useThemeColor('mutedText');
+    const isDark = effectiveTheme === 'dark';
+    const aiBubbleBg = isDark ? APP_COLORS.dark.border : CHAT_COLORS.aiBubble;
+    const subtleSurface = isDark ? APP_COLORS.dark.card : APP_COLORS.light.subtleSurface;
+    const locationCardBg = isDark ? APP_COLORS.dark.locationCard : COLORS.white;
+
     // ========================================
     // STATE MANAGEMENT
     // ========================================
@@ -227,11 +234,11 @@ export default function ChatScreen() {
     
     // Bottom sheet references
     const bottomSheetRef = useRef<BottomSheet>(null);
-    const snapPoints = useMemo(() => ['85%'], []);
+    const snapPoints = useMemo(() => [Dimensions.get('window').height * 0.75], []);
     
     // Transit details bottom sheet references
     const transitBottomSheetRef = useRef<BottomSheet>(null);
-    const transitSnapPoints = useMemo(() => ['30%'], []);
+    const transitSnapPoints = useMemo(() => [Dimensions.get('window').height * 0.30], []);
 
     // Parsed search data from navigation params
     const searchData: SearchData | null = params.searchData 
@@ -282,6 +289,23 @@ export default function ChatScreen() {
             console.log(TAG, 'No search data or trip ID found, handling missing data scenario');
             handleMissingData();
         }
+    }, []);
+
+    /**
+     * Sync selected map provider for embedded map rendering.
+     */
+    useEffect(() => {
+        const loadMapProvider = async () => {
+            try {
+                const provider = await getMapProvider();
+                console.log(TAG, 'Active map provider for preview:', provider);
+                setMapProvider(provider);
+            } catch (error) {
+                console.error(TAG, 'Failed to load map provider for preview:', error);
+            }
+        };
+
+        loadMapProvider();
     }, []);
 
     /**
@@ -733,7 +757,7 @@ export default function ChatScreen() {
     const showLocationBottomSheet = (location: Location): void => {
         console.log(TAG, 'Showing Location Bottom Sheet for location:', location.name);
         setBottomSheetLocation(location);
-        bottomSheetRef.current?.snapToIndex(1);
+        bottomSheetRef.current?.snapToIndex(0);
     };
 
     /**
@@ -1153,41 +1177,6 @@ export default function ChatScreen() {
         scrollViewRef.current?.scrollToEnd({ animated: true });
     };
 
-    /**
-     * Formats filter data into readable text
-     * @param filters - Filter object from search data
-     * @returns Formatted filter string
-     */
-    const formatFilters = (filters: SearchData['filters']): string => {
-        const filterTexts: string[] = [];
-        
-        if (filters.timeOfDay && filters.timeOfDay.length > 0) {
-            filterTexts.push(`Time: ${filters.timeOfDay.join(', ')}`);
-        }
-        if (filters.environment) {
-            filterTexts.push(`Environment: ${filters.environment}`);
-        }
-        if (filters.groupSize) {
-            filterTexts.push(`Group: ${filters.groupSize}`);
-        }
-        if (filters.planTransit) {
-            filterTexts.push('Transit planned');
-        }
-        if (filters.planFood) {
-            const priceDisplay = filters.priceRange 
-                ? PRICE_RANGE_MAP[filters.priceRange as keyof typeof PRICE_RANGE_MAP] || 'unknown'
-                : 'included';
-            filterTexts.push(`Food: ${priceDisplay}`);
-        }
-        if (filters.specialOption && filters.specialOption !== 'auto') {
-            filterTexts.push(`Style: ${filters.specialOption}`);
-        }
-
-        const formattedText = filterTexts.join(' • ');
-        console.log(TAG, 'Formatted filters:', formattedText);
-        return formattedText;
-    };
-
     // ========================================
     // HELPER FUNCTIONS
     // ========================================
@@ -1234,7 +1223,7 @@ export default function ChatScreen() {
         switch (item.type) {
             case 'info':
                 return (
-                    <View style={styles.bottomSheetInfoSection}>
+                    <View style={[styles.bottomSheetInfoSection, { borderBottomColor: borderColor }]}>
                         <View style={styles.bottomSheetRegenerateContainer}>
                             <TouchableOpacity
                                 style={styles.bottomSheetRegenerateIcon}
@@ -1246,32 +1235,32 @@ export default function ChatScreen() {
                                 <RotateCw size={ICON_SIZES.xl} color={COLORS.primary} />
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.bottomSheetLocationName}>{item.data.name}</Text>
-                        <Text style={styles.bottomSheetLocationAddress}>{item.data.address}</Text>
+                        <Text style={[styles.bottomSheetLocationName, { color: textColor }]}>{item.data.name}</Text>
+                        <Text style={[styles.bottomSheetLocationAddress, { color: mutedTextColor }]}>{item.data.address}</Text>
                         
                         <View style={styles.bottomSheetMetaRow}>
                             <View style={styles.bottomSheetMetaItem}>
                                 <Star size={ICON_SIZES.sm} color="#FFD700" />
-                                <Text style={styles.bottomSheetRatingText}>
+                                <Text style={[styles.bottomSheetRatingText, { color: textColor }]}>
                                     {item.data.rating?.toFixed(1)}
                                 </Text>
                             </View>
                             <View style={styles.bottomSheetMetaItem}>
-                                <Tag size={ICON_SIZES.sm} color={COLORS.lightText} />
-                                <Text style={styles.bottomSheetMetaText}>
+                                <Tag size={ICON_SIZES.sm} color={mutedTextColor} />
+                                <Text style={[styles.bottomSheetMetaText, { color: textColor }]}>
                                     {item.data.category.charAt(0).toUpperCase() + item.data.category.slice(1)}
                                 </Text>
                             </View>
                             <View style={styles.bottomSheetMetaItem}>
-                                <Hourglass size={ICON_SIZES.sm} color={COLORS.lightText} />
-                                <Text style={styles.bottomSheetMetaText}>{item.data.estimatedTime}</Text>
+                                <Hourglass size={ICON_SIZES.sm} color={mutedTextColor} />
+                                <Text style={[styles.bottomSheetMetaText, { color: textColor }]}>{item.data.estimatedTime}</Text>
                             </View>
                             <View style={styles.bottomSheetMetaItem}>
-                                <Text style={styles.bottomSheetMetaText}>{item.data.priceRange}</Text>
+                                <Text style={[styles.bottomSheetMetaText, { color: textColor }]}>{item.data.priceRange}</Text>
                             </View>
                         </View>
 
-                        <Text style={styles.bottomSheetDescription}>{item.data.description}</Text>
+                        <Text style={[styles.bottomSheetDescription, { color: textColor }]}>{item.data.description}</Text>
                         
                         <View style={styles.bottomSheetActionButtons}>
                             {bottomSheetLocation?.website && bottomSheetLocation.website !== 'Not available' ? (
@@ -1311,12 +1300,12 @@ export default function ChatScreen() {
                     <View style={styles.bottomSheetHoursSection}>
                         <View style={styles.bottomSheetSectionHeader}>
                             <Clock size={20} color={COLORS.primary} />
-                            <Text style={styles.bottomSheetSectionTitle}>Hours of Operation</Text>
+                            <Text style={[styles.bottomSheetSectionTitle, { color: textColor }]}>Hours of Operation</Text>
                         </View>
                         
                         <View style={styles.bottomSheetHoursList}>
                             {item.data.weekday_text.map((hours: string, index: number) => (
-                                <Text key={index} style={styles.bottomSheetHoursText}>
+                                <Text key={index} style={[styles.bottomSheetHoursText, { color: textColor }]}>
                                     {hours}
                                 </Text>
                             ))}
@@ -1326,10 +1315,10 @@ export default function ChatScreen() {
 
             case 'map':
                 return (
-                    <View style={styles.bottomSheetMapSection}>
+                    <View style={[styles.bottomSheetMapSection, { borderBottomColor: borderColor }]}>
                         <View style={styles.bottomSheetSectionHeader}>
                             <MapPin size={ICON_SIZES.xl} color={COLORS.primary} />
-                            <Text style={styles.bottomSheetSectionTitle}>Location</Text>
+                            <Text style={[styles.bottomSheetSectionTitle, { color: textColor }]}>Location</Text>
                         </View>
                         
                         <TouchableOpacity
@@ -1339,6 +1328,8 @@ export default function ChatScreen() {
                         >
                             <MapView
                                 style={styles.bottomSheetMap}
+                                provider={mapProvider === 'google' ? PROVIDER_GOOGLE : undefined}
+                                customMapStyle={useDarkGoogleMap ? GOOGLE_MAP_DARK_STYLE : undefined}
                                 initialRegion={{
                                     latitude: bottomSheetLocation?.coordinates?.latitude || FALLBACK_COORDINATES.latitude,
                                     longitude: bottomSheetLocation?.coordinates?.longitude || FALLBACK_COORDINATES.longitude,
@@ -1422,30 +1413,23 @@ export default function ChatScreen() {
                 <View 
                     style={[
                         styles.messageBubble,
-                        isUser ? styles.userBubble : styles.aiBubble
+                        isUser ? styles.userBubble : [styles.aiBubble, { backgroundColor: aiBubbleBg }]
                     ]}
                 >
                     <Text 
                         style={[
                             styles.messageText,
-                            isUser ? styles.userMessageText : styles.aiMessageText
+                            isUser ? styles.userMessageText : [styles.aiMessageText, { color: textColor }]
                         ]}
                     >
                         {message.content}
                     </Text>
                     
-                    {/* Display filters for user messages */}
-                    {isUser && searchData && (
-                        <Text style={styles.filterText}>
-                            {formatFilters(searchData.filters)}
-                        </Text>
-                    )}
-                    
                     {/* Display locations for AI messages */}
                     {!isUser && message.locations && message.locations.length > 0 && (
                         <View style={styles.locationsInChatContainer}>
                             {/* Uniform vertical timeline background */}
-                            <View style={styles.timelineBackground} />
+                            <View style={[styles.timelineBackground, { backgroundColor: borderColor }]} />
                             
                             {/* Vertical timeline of locations with transit info */}
                             {message.locations.map((location, locationIndex) => (
@@ -1454,7 +1438,7 @@ export default function ChatScreen() {
                                         <View key={`location-${locationIndex}-${location.name}`} style={styles.timelineItemWrapper}>
                                             {/* Timeline indicator */}
                                             <View style={styles.timelineIndicator}>
-                                                <View style={styles.timelineDot} />
+                                                <View style={[styles.timelineDot, { borderColor: aiBubbleBg }]} />
                                             </View>
                                             
                                             {/* Time display */}
@@ -1464,25 +1448,25 @@ export default function ChatScreen() {
                                             
                                             {/* Location content */}
                                             <TouchableOpacity
-                                                style={styles.locationItemInChat}
+                                                style={[styles.locationItemInChat, { backgroundColor: locationCardBg }]}
                                                 onPress={() => showLocationBottomSheet(location)}
                                                 accessibilityLabel={`Location: ${location.name} at ${location.time}`}
                                                 accessibilityRole="button"
                                             >
                                                 <View style={styles.locationItemContent}>
                                                     <View style={styles.locationItemHeader}>
-                                                        <Text style={styles.locationItemName} numberOfLines={1}>
+                                                        <Text style={[styles.locationItemName, { color: textColor }]} numberOfLines={1}>
                                                             {location.name}
                                                         </Text>
                                                         <View style={styles.locationItemMeta}>
-                                                            <Text style={styles.locationItemCategory}>
+                                                            <Text style={[styles.locationItemCategory, { color: mutedTextColor }]}>
                                                                 {location.category.charAt(0).toUpperCase() + location.category.slice(1)}
                                                             </Text>
                                                             {location.rating && (
                                                                 <View style={styles.locationItemRating}>
                                                                     <Star size={ICON_SIZES.xs} color="#FFD700" 
                                                                     />
-                                                                    <Text style={styles.locationItemRatingText}>
+                                                                    <Text style={[styles.locationItemRatingText, { color: mutedTextColor }]}>
                                                                         {location.rating.toFixed(1)}
                                                                     </Text>
                                                                 </View>
@@ -1490,11 +1474,11 @@ export default function ChatScreen() {
                                                         </View>
                                                     </View>
                                                     
-                                                    <Text style={styles.locationItemAddress} numberOfLines={1}>
+                                                    <Text style={[styles.locationItemAddress, { color: textColor }]} numberOfLines={1}>
                                                         {location.address}
                                                     </Text>
                                                     
-                                                    <Text style={styles.locationItemDescription} numberOfLines={2}>
+                                                    <Text style={[styles.locationItemDescription, { color: textColor }]} numberOfLines={2}>
                                                         {location.description}
                                                     </Text>
                                                     
@@ -1502,9 +1486,9 @@ export default function ChatScreen() {
                                                         <View style={styles.locationItemTime}>
                                                             <Hourglass 
                                                                 size={12} 
-                                                                color={COLORS.lightText} 
+                                                                color={mutedTextColor} 
                                                             />
-                                                            <Text style={styles.locationItemTimeText}>
+                                                            <Text style={[styles.locationItemTimeText, { color: mutedTextColor }]}>
                                                                 {location.estimatedTime}
                                                             </Text>
                                                         </View>
@@ -1533,7 +1517,7 @@ export default function ChatScreen() {
                                                     })()}
                                                 </View>
                                                 <View style={styles.transitDetails}>
-                                                    <Text style={styles.transitText}>
+                                                    <Text style={[styles.transitText, { color: mutedTextColor }]}>
                                                         {location.transitToNext.type} ({location.transitToNext.duration})
                                                     </Text>
                                                 </View>
@@ -1546,12 +1530,12 @@ export default function ChatScreen() {
                     
                     {/* Display practical tips for AI messages */}
                     {!isUser && message.practicalTips && (
-                        <View style={styles.practicalTipsContainer}>
+                        <View style={[styles.practicalTipsContainer, { backgroundColor: subtleSurface }]}>
                             <View style={styles.practicalTipsHeader}>
                                 <Lightbulb size={16} color={COLORS.primary} />
                                 <Text style={styles.practicalTipsTitle}>Trip Insights</Text>
                             </View>
-                            <Text style={styles.practicalTipsText}>{message.practicalTips}</Text>
+                            <Text style={[styles.practicalTipsText, { color: textColor }]}>{message.practicalTips}</Text>
                         </View>
                     )}
                 </View>
@@ -1567,8 +1551,8 @@ export default function ChatScreen() {
         console.log(TAG, 'Rendering loading message');
         
         return (
-            <View style={[styles.messageContainer, styles.aiMessageContainer]}>
-                <View style={[styles.messageBubble, styles.aiBubble]}>
+            <View style={[styles.messageContainer, styles.loadingMessageContainer]}>
+                <View style={[styles.messageBubble, styles.aiBubble, { backgroundColor: aiBubbleBg }]}>
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={COLORS.primary} />
                         <Animated.View
@@ -1579,7 +1563,7 @@ export default function ChatScreen() {
                                 },
                             ]}
                         >
-                            <Text style={styles.loadingText}>AI is thinking</Text>
+                            <Text style={[styles.loadingText, { color: mutedTextColor }]}>{"PlanIT'ing your trip..."}</Text>
                         </Animated.View>
                     </View>
                 </View>
@@ -1596,7 +1580,7 @@ export default function ChatScreen() {
         console.log(TAG, 'Rendering header with title:', title);
         
         return (
-            <View style={styles.header}>
+            <View style={[styles.header, { backgroundColor: cardColor, borderBottomColor: borderColor }]}>
                 <TouchableOpacity 
                     style={styles.backButton} 
                     onPress={() => {
@@ -1606,9 +1590,9 @@ export default function ChatScreen() {
                     accessibilityLabel="Go back"
                     accessibilityRole="button"
                 >
-                    <ChevronLeft size={24} color={COLORS.text} />
+                    <ChevronLeft size={ICON_SIZES.xl} color={textColor} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle} numberOfLines={1}>
+                <Text style={[styles.headerTitle, { color: textColor }]} numberOfLines={1}>
                     {title}
                 </Text>
                 <View style={styles.headerSpacer} />
@@ -1637,25 +1621,25 @@ export default function ChatScreen() {
             switch (item.type) {
                 case 'transit':
                     return (
-                        <View style={styles.transitDetailsContainer}>
+                        <View style={[styles.transitDetailsContainer, { backgroundColor: subtleSurface }]}>
                             <View style={styles.transitTypeContainer}>
                                 {(() => {
                                     const TransitIcon = getTransitIcon(item.data.type);
                                     return <TransitIcon size={24} color={COLORS.primary} />;
                                 })()}
-                                <Text style={styles.transitTypeText}>
+                                <Text style={[styles.transitTypeText, { color: textColor }]}>
                                     {item.data.type}
                                 </Text>
-                                <Text style={styles.transitDurationText}>
+                                <Text style={[styles.transitDurationText, { color: mutedTextColor }]}>
                                     {item.data.duration}
                                 </Text>
                             </View>
                             
                             <View style={styles.transitInstructionsContainer}>
-                                <Text style={styles.transitInstructionsTitle}>
+                                <Text style={[styles.transitInstructionsTitle, { color: textColor }]}>
                                     Instructions
                                 </Text>
-                                <Text style={styles.transitInstructionsText}>
+                                <Text style={[styles.transitInstructionsText, { color: textColor }]}>
                                     {item.data.details}
                                 </Text>
                             </View>
@@ -1688,7 +1672,7 @@ export default function ChatScreen() {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor }]}>
             {/* Header */}
             {renderHeader()}
 
@@ -1715,6 +1699,8 @@ export default function ChatScreen() {
                     style={[
                         styles.mapItContainer,
                         {
+                            backgroundColor: cardColor,
+                            borderTopColor: borderColor,
                             opacity: mapItButtonAnimation,
                             transform: [{
                                 translateY: mapItButtonAnimation.interpolate({
@@ -1755,11 +1741,12 @@ export default function ChatScreen() {
                 ref={bottomSheetRef}
                 index={-1}
                 snapPoints={snapPoints}
+                enableDynamicSizing={false}
                 enablePanDownToClose={true}
                 backdropComponent={renderBackdrop}
                 onClose={() => setBottomSheetLocation(null)}
-                handleIndicatorStyle={styles.bottomSheetIndicator}
-                backgroundStyle={styles.bottomSheetBackground}
+                handleIndicatorStyle={[styles.bottomSheetIndicator, { backgroundColor: borderColor }]}
+                backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: cardColor }]}
             >
                 {renderBottomSheetContent()}
             </BottomSheet>
@@ -1769,25 +1756,26 @@ export default function ChatScreen() {
                 ref={transitBottomSheetRef}
                 index={showTransitDetails && transitDetailsLocation ? 0 : -1}
                 snapPoints={transitSnapPoints}
+                enableDynamicSizing={false}
                 enablePanDownToClose={true}
                 backdropComponent={renderBackdrop}
                 onClose={() => {
                     setShowTransitDetails(false);
                     setTransitDetailsLocation(null);
                 }}
-                handleIndicatorStyle={styles.bottomSheetIndicator}
-                backgroundStyle={styles.bottomSheetBackground}
+                handleIndicatorStyle={[styles.bottomSheetIndicator, { backgroundColor: borderColor }]}
+                backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: cardColor }]}
             >
                 <BottomSheetView style={styles.transitBottomSheetContent}>
-                    <View style={styles.transitBottomSheetHeader}>
-                        <Text style={styles.transitBottomSheetTitle}>
+                    <View style={[styles.transitBottomSheetHeader, { borderBottomColor: borderColor }]}>
+                        <Text style={[styles.transitBottomSheetTitle, { color: textColor }]}>
                             Transit Details
                         </Text>
                         <TouchableOpacity
                             onPress={hideTransitDetailsModal}
                             style={styles.transitBottomSheetCloseButton}
                         >
-                            <X size={24} color={COLORS.text} />
+                            <X size={ICON_SIZES.xl} color={textColor} />
                         </TouchableOpacity>
                     </View>
                     {renderTransitDetailsFlashList()}
@@ -1804,7 +1792,6 @@ const styles = StyleSheet.create({
     // Layout
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     
     // Header
@@ -1815,9 +1802,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.xl,
         paddingVertical: SPACING.md + SPACING.xs, // 15
         paddingTop: CHAT_LAYOUT.statusBarPadding,
-        backgroundColor: COLORS.white,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
         ...SHADOWS.card,
     },
     backButton: {
@@ -1828,7 +1813,6 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: TYPOGRAPHY.fontSize.lg,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         textAlign: 'center',
         marginHorizontal: SPACING.sm + SPACING.xs, // 10
     },
@@ -1858,6 +1842,9 @@ const styles = StyleSheet.create({
         maxWidth: '100%',
         width: '100%',
     },
+    loadingMessageContainer: {
+        alignSelf: 'flex-start',
+    },
     
     // Message Bubbles
     messageBubble: {
@@ -1871,7 +1858,6 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: CHAT_LAYOUT.smallBubbleRadius,
     },
     aiBubble: {
-        backgroundColor: CHAT_COLORS.aiBubble,
         borderBottomLeftRadius: CHAT_LAYOUT.smallBubbleRadius,
     },
     
@@ -1883,16 +1869,7 @@ const styles = StyleSheet.create({
     userMessageText: {
         color: CHAT_COLORS.userText,
     },
-    aiMessageText: {
-        color: CHAT_COLORS.aiText,
-    },
-    filterText: {
-        fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.white,
-        marginTop: SPACING.sm,
-        fontStyle: 'italic',
-        lineHeight: SPACING.lg,
-    },
+    aiMessageText: {},
     
     // Loading Animation
     loadingContainer: {
@@ -1904,7 +1881,6 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.lightText,
         fontStyle: 'italic',
     },
 
@@ -1922,7 +1898,6 @@ const styles = StyleSheet.create({
         top: SPACING.xs + 6, // Start from first dot center
         bottom: SPACING.xs + 6, // End at last dot center
         width: 2,
-        backgroundColor: COLORS.border,
         zIndex: 0,
     },
     timelineItemWrapper: {
@@ -1943,7 +1918,6 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         backgroundColor: COLORS.primary,
         borderWidth: 2,
-        borderColor: COLORS.white,
         ...SHADOWS.card,
     },
     timeDisplayContainer: {
@@ -1961,7 +1935,6 @@ const styles = StyleSheet.create({
     
     locationItemInChat: {
         flex: 1,
-        backgroundColor: COLORS.white,
         borderRadius: RADIUS.sm,
         padding: SPACING.sm,
         ...SHADOWS.card,
@@ -1979,7 +1952,6 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: TYPOGRAPHY.fontSize.sm,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         marginRight: SPACING.xs,
     },
     locationItemMeta: {
@@ -1988,7 +1960,6 @@ const styles = StyleSheet.create({
     },
     locationItemCategory: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.lightText,
         marginRight: SPACING.xs,
     },
     locationItemRating: {
@@ -1997,17 +1968,14 @@ const styles = StyleSheet.create({
     },
     locationItemRatingText: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.lightText,
         marginLeft: SPACING.xs,
     },
     locationItemAddress: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.text,
         marginBottom: SPACING.xs / 2,
     },
     locationItemDescription: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.text,
         marginBottom: SPACING.xs / 2,
     },
     locationItemFooter: {
@@ -2021,7 +1989,6 @@ const styles = StyleSheet.create({
     },
     locationItemTimeText: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.lightText,
         marginLeft: SPACING.xs,
     },
     locationItemPriceStatus: {
@@ -2041,9 +2008,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: SPACING.md,
-        backgroundColor: COLORS.white,
         borderTopWidth: 1,
-        borderTopColor: COLORS.border,
         ...SHADOWS.card,
     },
     mapItButtonFullWidth: {
@@ -2068,13 +2033,11 @@ const styles = StyleSheet.create({
 
     // Bottom Sheet Styles
     bottomSheetBackground: {
-        backgroundColor: COLORS.white,
         borderTopLeftRadius: RADIUS.xl,
         borderTopRightRadius: RADIUS.xl,
         ...SHADOWS.card,
     },
     bottomSheetIndicator: {
-        backgroundColor: COLORS.border,
         width: 40,
         height: 4,
     },
@@ -2103,31 +2066,27 @@ const styles = StyleSheet.create({
     bottomSheetInfoSection: {
         paddingBottom: SPACING.lg,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
         marginBottom: SPACING.lg,
         position: 'relative',
     },
     bottomSheetLocationName: {
         fontSize: TYPOGRAPHY.fontSize.xl,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
-        color: COLORS.text,
         marginBottom: SPACING.xs,
+        paddingRight: SPACING.xxxl,
     },
     bottomSheetLocationAddress: {
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.lightText,
         marginBottom: SPACING.md,
         lineHeight: TYPOGRAPHY.lineHeight.relaxed,
     },
     bottomSheetRatingText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         marginLeft: SPACING.xs,
     },
     bottomSheetDescription: {
         fontSize: TYPOGRAPHY.fontSize.base,
-        color: COLORS.text,
         lineHeight: TYPOGRAPHY.lineHeight.relaxed,
         marginBottom: SPACING.md,
     },
@@ -2145,7 +2104,6 @@ const styles = StyleSheet.create({
     },
     bottomSheetMetaText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.text,
         marginLeft: SPACING.xs,
     },
     bottomSheetPhoneButton: {
@@ -2212,7 +2170,6 @@ const styles = StyleSheet.create({
     bottomSheetSectionTitle: {
         fontSize: TYPOGRAPHY.fontSize.lg,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         marginLeft: SPACING.sm,
     },
 
@@ -2227,7 +2184,6 @@ const styles = StyleSheet.create({
     },
     bottomSheetHoursText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.text,
         lineHeight: TYPOGRAPHY.lineHeight.relaxed,
     },
 
@@ -2235,7 +2191,6 @@ const styles = StyleSheet.create({
     bottomSheetMapSection: {
         paddingBottom: SPACING.lg,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
         marginBottom: SPACING.lg,
     },
     bottomSheetMapContainer: {
@@ -2262,7 +2217,6 @@ const styles = StyleSheet.create({
     practicalTipsContainer: {
         marginTop: SPACING.md,
         padding: SPACING.md,
-        backgroundColor: '#f8f9fa',
         borderRadius: RADIUS.md,
         borderLeftWidth: 3,
         borderLeftColor: COLORS.primary,
@@ -2281,7 +2235,6 @@ const styles = StyleSheet.create({
     practicalTipsText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
         lineHeight: 20,
-        color: COLORS.text,
     },
     
     // Transit styles
@@ -2307,7 +2260,6 @@ const styles = StyleSheet.create({
     },
     transitText: {
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.lightText,
         fontStyle: 'italic',
     },
 
@@ -2327,7 +2279,6 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     transitDetailsContainer: {
-        backgroundColor: '#f8f9fa',
         borderRadius: RADIUS.md,
         padding: SPACING.md,
         borderLeftWidth: 3,
@@ -2341,12 +2292,10 @@ const styles = StyleSheet.create({
     transitTypeText: {
         fontSize: TYPOGRAPHY.fontSize.lg,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         marginLeft: SPACING.sm,
     },
     transitDurationText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.lightText,
         marginLeft: SPACING.sm,
     },
     transitInstructionsContainer: {
@@ -2355,12 +2304,10 @@ const styles = StyleSheet.create({
     transitInstructionsTitle: {
         fontSize: TYPOGRAPHY.fontSize.base,
         fontWeight: TYPOGRAPHY.fontWeight.semibold,
-        color: COLORS.text,
         marginBottom: SPACING.xs / 2,
     },
     transitInstructionsText: {
         fontSize: TYPOGRAPHY.fontSize.sm,
-        color: COLORS.text,
         lineHeight: TYPOGRAPHY.lineHeight.relaxed,
     },
     transitFlashListContent: {
@@ -2377,13 +2324,11 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.lg,
         paddingBottom: SPACING.md,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
     },
     transitBottomSheetTitle: {
         flex: 1,
         fontSize: TYPOGRAPHY.fontSize.lg,
         fontWeight: TYPOGRAPHY.fontWeight.bold,
-        color: COLORS.text,
         marginRight: SPACING.md,
     },
     transitBottomSheetCloseButton: {

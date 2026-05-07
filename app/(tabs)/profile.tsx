@@ -15,7 +15,7 @@ import { Platform, StyleSheet, TouchableOpacity, View, Linking, Alert, ActivityI
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChevronRight, ChevronDown, Map, Star, ExternalLink, RefreshCw, Github, UserRoundPen, SunMoon, RotateCcwKey } from 'lucide-react-native';
+import { ChevronRight, ChevronDown, Map, Star, ExternalLink, RefreshCw, Heart, UserRoundPen, SunMoon, RotateCcwKey } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import AppearanceActionSheet, { AppearanceActionSheetRef } from '@/components/AppearanceActionSheet';
 import MapsProviderActionSheet, { MapsProviderActionSheetRef } from '@/components/MapsProviderActionSheet';
@@ -24,6 +24,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { COLORS, TYPOGRAPHY, SPACING, ICON_SIZES, SHADOWS, PROFILE_LAYOUT } from '@/constants/DesignTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URLS } from '@/constants/ApiConfig';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 // ========================================
 // CONSTANTS & CONFIGURATION
@@ -42,13 +43,20 @@ export default function ProfileScreen() {
     // ========================================
     // HOOKS & CONTEXT
     // ========================================
-    
+
     const { user, isAuthenticated, refreshUserProfile, token } = useAuth();
+
+    // ========================================
+    // THEME COLORS
+    // ========================================
+    const cardBackground = useThemeColor('card');
+    const dividerColor = useThemeColor('divider');
+    const mutedTextColor = useThemeColor('mutedText');
 
     // ========================================
     // STATE MANAGEMENT
     // ========================================
-    
+
     const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
     const [isLoadingImage, setIsLoadingImage] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -56,12 +64,12 @@ export default function ProfileScreen() {
     // ========================================
     // EFFECTS
     // ========================================
-    
+
     // Component lifecycle logging and image loading
     useEffect(() => {
         console.log(TAG, 'ProfileScreen mounted');
         loadProfileImage();
-        
+
         return () => {
             console.log(TAG, 'ProfileScreen unmounted');
         };
@@ -78,7 +86,7 @@ export default function ProfileScreen() {
     // ========================================
     // IMAGE MANAGEMENT FUNCTIONS
     // ========================================
-    
+
     /**
      * Loads the saved profile image from AsyncStorage
      */
@@ -86,7 +94,7 @@ export default function ProfileScreen() {
         try {
             console.log(TAG, 'Loading profile image from AsyncStorage');
             const savedImageUri = await AsyncStorage.getItem(PROFILE_IMAGE_KEY);
-            
+
             if (savedImageUri) {
                 console.log(TAG, 'Profile image found:', savedImageUri);
                 setProfileImageUri(savedImageUri);
@@ -120,7 +128,7 @@ export default function ProfileScreen() {
         try {
             console.log(TAG, 'Requesting image picker permissions');
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            
+
             if (status !== 'granted') {
                 console.warn(TAG, 'Image picker permission denied');
                 Alert.alert(
@@ -130,7 +138,7 @@ export default function ProfileScreen() {
                 );
                 return false;
             }
-            
+
             console.log(TAG, 'Image picker permissions granted');
             return true;
         } catch (error) {
@@ -185,7 +193,7 @@ export default function ProfileScreen() {
                     setProfileImageUri(selectedImage.uri);
                     await saveProfileImage(selectedImage.uri);
                 }
-                
+
                 console.log(TAG, 'Profile image updated successfully');
             } else {
                 console.log(TAG, 'Image picker was canceled');
@@ -208,7 +216,7 @@ export default function ProfileScreen() {
     const uploadImageToBackend = async (imageUri: string): Promise<void> => {
         try {
             console.log(TAG, 'Uploading image to backend');
-            
+
             // Create form data
             const formData = new FormData();
             formData.append('image', {
@@ -231,11 +239,11 @@ export default function ProfileScreen() {
 
             if (result.success) {
                 console.log(TAG, 'Image uploaded successfully:', result.imageUrl);
-                
+
                 // Update local state with the backend URL
                 const fullImageUrl = `${API_URLS.USER_PROFILE_IMAGE.replace('/api/user/profile-image', '')}${result.imageUrl}`;
                 setProfileImageUri(fullImageUrl);
-                
+
                 // Update user context with new profile image URL
                 if (refreshUserProfile) {
                     await refreshUserProfile();
@@ -256,7 +264,7 @@ export default function ProfileScreen() {
     const clearProfileImage = async (): Promise<void> => {
         try {
             console.log(TAG, 'Clearing profile image');
-            
+
             // If user is authenticated, clear the profile image from backend
             if (isAuthenticated && token) {
                 await clearProfileImageFromBackend();
@@ -265,7 +273,7 @@ export default function ProfileScreen() {
                 await AsyncStorage.removeItem(PROFILE_IMAGE_KEY);
                 setProfileImageUri(null);
             }
-            
+
             console.log(TAG, 'Profile image cleared successfully');
         } catch (error) {
             console.error(TAG, 'Error clearing profile image:', error);
@@ -278,7 +286,7 @@ export default function ProfileScreen() {
     const clearProfileImageFromBackend = async (): Promise<void> => {
         try {
             console.log(TAG, 'Clearing profile image from backend');
-            
+
             const response = await fetch(API_URLS.USER_PROFILE_IMAGE, {
                 method: 'DELETE',
                 headers: {
@@ -291,7 +299,7 @@ export default function ProfileScreen() {
             if (result.success) {
                 console.log(TAG, 'Profile image cleared from backend successfully');
                 setProfileImageUri(null);
-                
+
                 // Update user context
                 if (refreshUserProfile) {
                     await refreshUserProfile();
@@ -309,7 +317,7 @@ export default function ProfileScreen() {
     // ========================================
     // REFRESH FUNCTIONALITY
     // ========================================
-    
+
     /**
      * Handles pull-down refresh functionality
      * Refreshes user profile data and reloads profile image
@@ -317,18 +325,18 @@ export default function ProfileScreen() {
     const onRefresh = async (): Promise<void> => {
         console.log(TAG, 'Pull-down refresh triggered');
         setRefreshing(true);
-        
+
         try {
             // Refresh user profile if authenticated
             if (isAuthenticated && refreshUserProfile) {
                 console.log(TAG, 'Refreshing user profile data');
                 await refreshUserProfile();
             }
-            
+
             // Reload profile image
             console.log(TAG, 'Reloading profile image');
             await loadProfileImage();
-            
+
             console.log(TAG, 'Profile refresh completed successfully');
         } catch (error) {
             console.error(TAG, 'Error during profile refresh:', error);
@@ -347,7 +355,7 @@ export default function ProfileScreen() {
         try {
             const url = 'https://github.com/Rongbin99/PlanIT';
             const supported = await Linking.canOpenURL(url);
-            
+
             if (supported) {
                 await Linking.openURL(url);
                 console.log(TAG, 'Successfully opened GitHub link');
@@ -367,17 +375,17 @@ export default function ProfileScreen() {
 
     const handleProfileImageLongPress = () => {
         console.log(TAG, 'Profile image long pressed');
-        
+
         if (profileImageUri) {
             Alert.alert(
                 'Reset Profile Picture',
                 'Do you want to reset your profile picture to default?',
                 [
                     { text: 'Cancel', style: 'cancel' },
-                    { 
-                        text: 'Reset', 
+                    {
+                        text: 'Reset',
                         style: 'destructive',
-                        onPress: clearProfileImage 
+                        onPress: clearProfileImage
                     }
                 ]
             );
@@ -386,7 +394,7 @@ export default function ProfileScreen() {
 
     const handleSettingPress = (settingName: string) => {
         console.log(TAG, `Setting pressed: ${settingName}`);
-        
+
         switch (settingName) {
             case 'Change Password':
                 if (isAuthenticated) {
@@ -398,8 +406,8 @@ export default function ProfileScreen() {
                         'You need to be logged in to change your password. Would you like to sign in now?',
                         [
                             { text: 'Cancel', style: 'cancel' },
-                            { 
-                                text: 'Sign In', 
+                            {
+                                text: 'Sign In',
                                 onPress: () => router.push('/account' as any)
                             }
                         ]
@@ -413,7 +421,6 @@ export default function ProfileScreen() {
                 appearanceActionSheetRef.current?.show();
                 break;
             default:
-                // TODO: Implement other settings screens
                 console.log(TAG, `Setting "${settingName}" not implemented yet`);
                 break;
         }
@@ -455,8 +462,8 @@ export default function ProfileScreen() {
                     />
                     <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
                     <View style={styles.profileOverlay}>
-                        <TouchableOpacity 
-                            style={styles.profileImageContainer}
+                        <TouchableOpacity
+                            style={[styles.profileImageContainer, { backgroundColor: cardBackground }]}
                             onPress={handleProfileImagePress}
                             onLongPress={handleProfileImageLongPress}
                             accessibilityLabel="Edit profile picture"
@@ -465,10 +472,10 @@ export default function ProfileScreen() {
                         >
                             <Image
                                 source={
-                                    isAuthenticated && user?.profileImageUrl 
+                                    isAuthenticated && user?.profileImageUrl
                                         ? { uri: `${API_URLS.USER_PROFILE_IMAGE.replace('/api/user/profile-image', '')}${user.profileImageUrl}` }
-                                        : profileImageUri 
-                                            ? { uri: profileImageUri } 
+                                        : profileImageUri
+                                            ? { uri: profileImageUri }
                                             : require('@/assets/images/default-avatar.jpg')
                                 }
                                 style={styles.profileImage}
@@ -482,15 +489,15 @@ export default function ProfileScreen() {
                         <ThemedText type="title" style={styles.userName}>
                             {isAuthenticated && user ? user.name : 'Guest User'}
                         </ThemedText>
-                        <ThemedView style={styles.statsContainer}>
-                            <ThemedView style={styles.statItem}>
+                        <ThemedView style={[styles.statsContainer, { backgroundColor: cardBackground }]}>
+                            <ThemedView style={[styles.statItem, { backgroundColor: 'transparent' }]}>
                                 <ThemedText type="defaultSemiBold">
                                     {isAuthenticated && user ? user.adventuresCount : 0}
                                 </ThemedText>
                                 <ThemedText>Adventures</ThemedText>
                             </ThemedView>
-                            <ThemedView style={styles.statDivider} />
-                            <ThemedView style={styles.statItem}>
+                            <ThemedView style={[styles.statDivider, { backgroundColor: dividerColor }]} />
+                            <ThemedView style={[styles.statItem, { backgroundColor: 'transparent' }]}>
                                 <ThemedText type="defaultSemiBold">
                                     {isAuthenticated && user ? user.placesVisitedCount : 0}
                                 </ThemedText>
@@ -503,90 +510,90 @@ export default function ProfileScreen() {
                 {/* Settings Menu */}
                 <ThemedView style={styles.settingsContainer}>
                     <ThemedText type="subtitle" style={styles.settingsTitle}>Settings</ThemedText>
-                    
-                    <TouchableOpacity 
-                        style={styles.settingItem}
+
+                    <TouchableOpacity
+                        style={[styles.settingItem, { borderBottomColor: dividerColor }]}
                         onPress={() => handleSettingPress('Account')}
                         accessibilityLabel="Account settings"
                         accessibilityRole="button"
                     >
-                        <UserRoundPen size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <UserRoundPen size={ICON_SIZES.xl} color={mutedTextColor} />
                         <ThemedText style={styles.settingText}>Account</ThemedText>
-                        <ChevronRight size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ChevronRight size={ICON_SIZES.xl} color={mutedTextColor} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
-                        style={styles.settingItem}
+                    <TouchableOpacity
+                        style={[styles.settingItem, { borderBottomColor: dividerColor }]}
                         onPress={() => handleSettingPress('Change Password')}
                         accessibilityLabel="Change password settings"
                         accessibilityRole="button"
                     >
-                        <RotateCcwKey size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <RotateCcwKey size={ICON_SIZES.xl} color={mutedTextColor} />
                         <ThemedText style={styles.settingText}>Change Password</ThemedText>
-                        <ChevronRight size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ChevronRight size={ICON_SIZES.xl} color={mutedTextColor} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
-                        style={styles.settingItem}
+                    <TouchableOpacity
+                        style={[styles.settingItem, { borderBottomColor: dividerColor }]}
                         onPress={() => handleSettingPress('Appearance')}
                         accessibilityLabel="Appearance settings"
                         accessibilityRole="button"
                     >
-                        <SunMoon size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <SunMoon size={ICON_SIZES.xl} color={mutedTextColor} />
                         <ThemedText style={styles.settingText}>Appearance</ThemedText>
-                        <ChevronDown size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ChevronDown size={ICON_SIZES.xl} color={mutedTextColor} />
                     </TouchableOpacity>
 
                     {/* Maps Provider (iOS only) */}
                     {Platform.OS === 'ios' ? (
-                        <TouchableOpacity 
-                            style={styles.settingItem}
+                        <TouchableOpacity
+                            style={[styles.settingItem, { borderBottomColor: dividerColor }]}
                             onPress={() => mapsProviderSheetRef.current?.show()}
                             accessibilityLabel="Maps Provider settings"
                             accessibilityRole="button"
                         >
-                            <Map size={ICON_SIZES.xl} color={COLORS.lightText} />
+                            <Map size={ICON_SIZES.xl} color={mutedTextColor} />
                             <ThemedText style={styles.settingText}>Maps Provider</ThemedText>
-                            <ChevronDown size={ICON_SIZES.xl} color={COLORS.lightText} />
+                            <ChevronDown size={ICON_SIZES.xl} color={mutedTextColor} />
                         </TouchableOpacity>
                     ) : null}
 
-                    <TouchableOpacity 
-                        style={styles.settingItem}
+                    <TouchableOpacity
+                        style={[styles.settingItem, { borderBottomColor: dividerColor }]}
                         onPress={() => handleSettingPress('Rate PlanIT')}
                         accessibilityLabel="Rate the app"
                         accessibilityRole="button"
                     >
-                        <Star size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <Star size={ICON_SIZES.xl} color={mutedTextColor} />
                         <ThemedText style={styles.settingText}>Rate Us</ThemedText>
-                        <ExternalLink size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ExternalLink size={ICON_SIZES.xl} color={mutedTextColor} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
-                        style={styles.settingItem}
+                    <TouchableOpacity
+                        style={[styles.settingItem, { borderBottomColor: dividerColor }]}
                         onPress={() => handleSettingPress('Check for Updates')}
                         accessibilityLabel="Check for app updates"
                         accessibilityRole="button"
                     >
-                        <RefreshCw size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <RefreshCw size={ICON_SIZES.xl} color={mutedTextColor} />
                         <ThemedText style={styles.settingText}>Check for Updates</ThemedText>
-                        <ExternalLink size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ExternalLink size={ICON_SIZES.xl} color={mutedTextColor} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
-                        style={styles.settingItem} 
+                    <TouchableOpacity
+                        style={[styles.settingItem, { borderBottomColor: dividerColor }]}
                         onPress={openGitHub}
                         accessibilityLabel="Support on GitHub"
                         accessibilityRole="button"
                     >
-                        <Github size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <Heart size={ICON_SIZES.xl} color={mutedTextColor} />
                         <ThemedText style={styles.settingText}>Support on GitHub</ThemedText>
-                        <ExternalLink size={ICON_SIZES.xl} color={COLORS.lightText} />
+                        <ExternalLink size={ICON_SIZES.xl} color={mutedTextColor} />
                     </TouchableOpacity>
                 </ThemedView>
 
                 {/* Copyright */}
-                <ThemedText style={styles.copyright}>
+                <ThemedText style={[styles.copyright, { color: mutedTextColor }]}>
                     &copy; {new Date().getFullYear()} PlanIT. Made by Rongbin99.
                 </ThemedText>
             </ScrollView>
@@ -628,7 +635,6 @@ const styles = StyleSheet.create({
     profileImageContainer: {
         position: 'relative',
         marginBottom: SPACING.sm + SPACING.xs, // 10
-        backgroundColor: COLORS.white,
         borderRadius: PROFILE_LAYOUT.profileImageRadius,
         padding: 2,
         ...SHADOWS.card,
@@ -669,7 +675,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.xl,
-        backgroundColor: COLORS.white,
         borderRadius: PROFILE_LAYOUT.statsContainerRadius,
         padding: SPACING.sm + SPACING.xs, // 10
         ...SHADOWS.card,
@@ -681,7 +686,6 @@ const styles = StyleSheet.create({
     statDivider: {
         width: 1,
         height: PROFILE_LAYOUT.statDividerHeight,
-        backgroundColor: COLORS.border,
         marginHorizontal: SPACING.xl,
     },
     settingsContainer: {
@@ -696,7 +700,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: SPACING.md + SPACING.xs, // 14
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
     },
     settingText: {
         flex: 1,
@@ -705,7 +708,6 @@ const styles = StyleSheet.create({
     copyright: {
         textAlign: 'center',
         fontSize: TYPOGRAPHY.fontSize.xs,
-        color: COLORS.lightText,
         marginTop: SPACING.sm,
         marginBottom: SPACING.lg,
         opacity: 0.8,
